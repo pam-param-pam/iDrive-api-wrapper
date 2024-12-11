@@ -15,5 +15,5 @@ class Resource:
     def set_password(self, password: str) -> None:
         self._password = password
 
-    def check_password(self, password: str):
-        make_request("GET", f"resource/password/{self._id}", headers={"x-resource-password": password})
+    async def check_password(self, password: str):
+        await make_request("GET", f"resource/password/{self._id}", headers={"x-resource-password": password})

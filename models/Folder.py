@@ -49,25 +49,25 @@ class Folder(Item):
     def __str__(self):
         return f"Folder({self.name})"
 
-    def _fetch_more_info(self):
-        data = make_request("GET", f"folder/moreinfo/{self.id}", headers=self._get_password_header())
+    async def _fetch_more_info(self):
+        data = await make_request("GET", f"folder/moreinfo/{self.id}", headers=self._get_password_header())
         self._folder_size = data['folder_size']
         self._folder_count = data['folder_count']
         self._file_count = data['file_count']
 
-    def _fetch_data(self):
-        data = make_request("GET", f"folder/{self.id}", headers=self._get_password_header())
+    async def _fetch_data(self):
+        data = await make_request("GET", f"folder/{self.id}", headers=self._get_password_header())
         self._set_data(data['folder'])
         self._fetched = True
 
-    def upload(self):
+    async def upload(self):
         pass
 
-    def download(self, callback=None):
+    async def download(self, callback=None):
         from utils.common import get_zip_download_url, download_from_url
         download_url = get_zip_download_url([self])
 
-        download_from_url(download_url)
+        await download_from_url(download_url)
 
     @staticmethod
     def _parse_children(parent: Union['Folder', None], data: dict):

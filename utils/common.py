@@ -7,6 +7,7 @@ from models.Folder import Folder
 from models.Item import Item
 from utils.networker import make_request
 
+
 def _extract_ids_and_passwords(items: List[Item]) -> dict:
     ids = []
     resourcePasswords = {}
@@ -17,33 +18,35 @@ def _extract_ids_and_passwords(items: List[Item]) -> dict:
 
     return {'ids': ids, 'resourcePasswords': resourcePasswords}
 
-def move_to_trash(items: List[Item]) -> None:
+
+async def move_to_trash(items: List[Item]) -> None:
     data = _extract_ids_and_passwords(items)
-    make_request("PATCH", f"item/moveToTrash", data)
+    await make_request("PATCH", f"item/moveToTrash", data)
 
 
-def delete(items: List[Item]) -> None:
+async def delete(items: List[Item]) -> None:
     data = _extract_ids_and_passwords(items)
-    make_request("PATCH", f"item/delete", data)
+    await make_request("PATCH", f"item/delete", data)
 
 
-def restore_from_trash(items: List[Item]) -> None:
+async def restore_from_trash(items: List[Item]) -> None:
     data = _extract_ids_and_passwords(items)
-    make_request("PATCH", f"item/restoreFromTrash", data)
+    await make_request("PATCH", f"item/restoreFromTrash", data)
 
 
-def move(items: List[Item], new_parent: Folder) -> None:
+async def move(items: List[Item], new_parent: Folder) -> None:
     data = _extract_ids_and_passwords(items)
     data['new_parent_id'] = new_parent.id
-    make_request("PATCH", f"item/move", data)
+    await make_request("PATCH", f"item/move", data)
 
-def get_zip_download_url(items: List[Item]) -> str:
+
+async def get_zip_download_url(items: List[Item]) -> str:
     data = _extract_ids_and_passwords(items)
-    data = make_request("POST", f"zip", data)
+    data = await make_request("POST", f"zip", data)
     return data['download_url']
 
 
-def download_from_url(download_url: str):
+async def download_from_url(download_url: str):
     # Perform the download
     response = requests.get(download_url, stream=True)
     response.raise_for_status()

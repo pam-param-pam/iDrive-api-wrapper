@@ -1,10 +1,12 @@
 import logging
-from typing import Union, Optional
+from typing import Optional
 
+from models.Enums import EncryptionMethod
 from models.Item import Item
 from utils.networker import make_request
 
 logger = logging.getLogger("iDrive")
+
 
 class File(Item):
 
@@ -57,10 +59,10 @@ class File(Item):
         return self._type
 
     @property
-    def encryption_method(self):
+    def encryption_method(self) -> EncryptionMethod:
         if not (self._fetched or self._encryption_method):
             self._fetch_data()
-        return self._encryption_method
+        return EncryptionMethod(self._encryption_method)
 
     @property
     def download_url(self):
@@ -109,17 +111,17 @@ class File(Item):
         # todo
         return None
 
-
-
     def __str__(self):
         return f"File({self.name})"
 
-    def _fetch_data(self):
-        data = make_request("GET", f"file/{self.id}", headers=self._get_password_header())
+    async def _fetch_data(self):
+        data = await make_request("GET", f"file/{self.id}", headers=self._get_password_header())
         self._set_data(data)
         self._fetched = True
 
-
+    async def download(self, callback=None):
+        from utils.common import download_from_url
+        await download_from_url(self.download_url)
 
     def _set_data(self, json_data: dict):
         for key, value in json_data.items():

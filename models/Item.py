@@ -9,6 +9,7 @@ from utils.networker import make_request
 if TYPE_CHECKING:
     from Folder import Folder
 
+
 class Item(Resource, ABC):
 
     def __init__(self, item_id):
@@ -27,7 +28,11 @@ class Item(Resource, ABC):
         return self.name
 
     @abstractmethod
-    def _fetch_data(self):
+    async def _fetch_data(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def download(self):
         raise NotImplementedError
 
     @property
@@ -86,21 +91,21 @@ class Item(Resource, ABC):
     def _set_data(self, json_data: dict):
         raise NotImplementedError
 
-    def change_name(self, new_name: str) -> None:
-        make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())
+    async def rename(self, new_name: str) -> None:
+        await make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())
 
-    def move_to_trash(self) -> None:
+    async def move_to_trash(self) -> None:
         from utils import common
-        common.move_to_trash([self])
+        await common.move_to_trash([self])
 
-    def delete(self) -> None:
+    async def delete(self) -> None:
         from utils import common
-        common.move_to_trash([self])
+        await common.move_to_trash([self])
 
-    def restore_from_trash(self) -> None:
+    async def restore_from_trash(self) -> None:
         from utils import common
-        common.move_to_trash([self])
+        await common.move_to_trash([self])
 
-    def move(self, new_parent: Folder) -> None:
+    async def move(self, new_parent: Folder) -> None:
         from utils import common
-        common.move([self], new_parent)
+        await common.move([self], new_parent)
