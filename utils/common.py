@@ -1,5 +1,7 @@
+import cgi
 import os
 from typing import List
+from urllib.parse import unquote
 
 import requests
 
@@ -53,15 +55,12 @@ async def download_from_url(download_url: str):
 
     # Extract filename from headers, or fall back to a default name
     content_disposition = response.headers.get('Content-Disposition')
-    if content_disposition and 'filename=' in content_disposition:
-        filename = content_disposition.split('filename=')[1].strip('"')
-    else:
-        filename = 'downloaded_file.zip'
 
-    # Ensure safe filename in case of special characters
-    filename = os.path.basename(filename)
+    print(content_disposition)
 
-    # Save the file
+    # attachment; filename="Seven%20Nation%20Army%20can%27t%20stop%20the%20United%20States%20%28ww2%20edit%29.mp4"; filename*=UTF-8''Seven%20Nation%20Army%20can%27t%20stop%20the%20United%20States%20%28ww2%20edit%29.mp4
+    # todo fix filename, support both filename and filename*utf-8
+    filename = "aaaa"
     with open(filename, 'wb') as f:
         for chunk in response.iter_content(chunk_size=8192):  # Download in chunks
             f.write(chunk)
