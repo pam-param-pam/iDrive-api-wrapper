@@ -1,9 +1,9 @@
-import cgi
-import os
+import urllib
 from typing import List
 from urllib.parse import unquote
 
 import requests
+from tqdm import tqdm
 
 from models.Folder import Folder
 from models.Item import Item
@@ -47,6 +47,19 @@ def get_zip_download_url(items: List[Item]) -> str:
     data = make_request("POST", f"zip", data)
     return data['download_url']
 
+def parse_filename(content_disposition):
+    if 'filename*=' in content_disposition:
+        # Extract the UTF-8 filename
+        filename_encoded = content_disposition.split("filename*=")[1].split(';')[0].strip()
+        encoding, _, filename_encoded = filename_encoded.split("'", 2)
+        filename = urllib.parse.unquote(filename_encoded)
+    elif 'filename=' in content_disposition:
+        # Fallback to plain filename
+        filename = content_disposition.split("filename=")[1].split(';')[0].strip().strip('"')
+    else:
+        # Default filename if none provided
+        filename = "default_filename"
+    return filename
 
 def download_from_url(download_url: str):
     # Perform the download
@@ -56,11 +69,18 @@ def download_from_url(download_url: str):
     # Extract filename from headers, or fall back to a default name
     content_disposition = response.headers.get('Content-Disposition')
 
-    print(content_disposition)
+    filename = parse_filename(content_disposition)
 
-    # attachment; filename="Seven%20Nation%20Army%20can%27t%20stop%20the%20United%20States%20%28ww2%20edit%29.mp4"; filename*=UTF-8''Seven%20Nation%20Army%20can%27t%20stop%20the%20United%20States%20%28ww2%20edit%29.mp4
-    # todo fix filename, support both filename and filename*utf-8
-    filename = "aaaa"
-    with open(filename, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=8192):  # Download in chunks
-            f.write(chunk)
+    # Get the total file size from the Content-Length header (if available)
+    total_size = int(response.headers.get('content-length', 0))
+
+    # Open the file in binary write mode
+    with open(filename, 'wb') as file:
+        # Use tqdm for a progress bar (optional)
+        with tqdm(total=total_size, unit='B', unit_scale=True, desc=filename) as progress_bar:
+            for chunk in response.iter_content(chunk_size=8192):
+                # Write the chunk to the file
+                file.write(chunk)
+
+                # Update the progress bar
+                progress_bar.update(len(chunk))
