@@ -46,7 +46,7 @@ class Client:
         return data['auth_token']
 
     def _fetch_user(self) -> None:
-        data = make_request("GET", "auth/user/me")
+        data = make_request("GET", "user/me")
         self._user = User(data)
         APIConfig.user = self._user
 
@@ -62,14 +62,14 @@ class Client:
         data = data['trash']
         return Folder._parse_children(None, data)
 
-    def get_file(self, file_id) -> File:
+    def get_file(self, file_id, password=None) -> File:
         file = File(file_id)
-        file._fetch_data()
+        file.set_password(password)
         return file
 
-    def get_folder(self, folder_id) -> Folder:
+    def get_folder(self, folder_id, password=None) -> Folder:
         folder = Folder(folder_id)
-        folder._fetch_data()
+        folder.set_password(password)
         return folder
 
     def set_download_path(self, path: str):

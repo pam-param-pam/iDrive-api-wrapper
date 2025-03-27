@@ -10,7 +10,7 @@ from exceptions import IDriveException, UnauthorizedError, ResourceNotFoundError
 
 logger = logging.getLogger("iDrive")
 
-httpxClient = httpx.Client(timeout=10.0)
+httpxClient = httpx.Client(timeout=20.0)
 
 
 def _get_headers() -> dict:

@@ -3,7 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, TYPE_CHECKING
 
-from models.baseResource import Resource
+from models.Resource import Resource
+from utils.decorators import autoFetchProperty
 from utils.networker import make_request
 
 if TYPE_CHECKING:
@@ -15,14 +16,15 @@ class Item(Resource, ABC):
     def __init__(self, item_id):
         from models import Folder
         super().__init__(item_id)
+        self._is_dir: Optional[bool] = None
         self._name: Optional[str] = None
+        self._parent: Optional[Folder] = None
         self._parent_id: Optional[str] = None
         self._created: Optional[str] = None
         self._last_modified: Optional[str] = None
-        self._lock_from: Optional[str] = None
-        self._is_locked: Optional[bool] = None
         self._in_trash_since: Optional[str] = None
-        self._parent: Optional[Folder] = None
+        self._is_locked: Optional[bool] = None
+        self._lock_from: Optional[str] = None
 
     def __repr__(self):
         return self.name
@@ -35,61 +37,87 @@ class Item(Resource, ABC):
     def download(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def _set_more_data(self, data: dict):
+        raise NotImplementedError
+
+    def _fetch_more_data(self):
+        data = make_request("GET", f"item/moreinfo/{self.id}", headers=self._get_password_header())
+        self._set_more_data(data)
+
+    def _set_data(self, json_data: dict):
+        unmatched_keys = {}
+        for key, value in json_data.items():
+            if key == "isDir":
+                self.is_dir = value
+            elif key == "id":
+                self._id = value
+            elif key == "name":
+                self._name = value
+            elif key == "parent_id":
+                self._parent_id = value
+            elif key == "in_trash_since":
+                self._in_trash_since = value
+            elif key == "created":
+                self._created = value
+            elif key == "last_modified":
+                self._last_modified = value
+            elif key == "isLocked":
+                self._is_locked = value
+            elif key == "lockFrom":
+                self._lock_from = value
+            else:
+                unmatched_keys[key] = value
+
+        return unmatched_keys
+
     @property
     def id(self):
         return self._id
 
     @property
+    @autoFetchProperty('_fetch_data')
     def name(self):
-        if not (self._fetched or self._name):
-            self._fetch_data()
         return self._name
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def parent_id(self):
+        return self._parent_id
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def created(self):
+        return self._created
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def last_modified(self):
+        return self._last_modified
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def is_locked(self):
+        return self._is_locked
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def lock_from(self):
+        return self._lock_from
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def in_trash_since(self):
+        return self._in_trash_since
 
     @property
     def parent(self):
         from models.Folder import Folder
-
-        if self._fetched:
-            self._fetch_data()
-        if not self._parent_id:
+        if not self.parent_id:
             raise ValueError("Root folder has no parent!")
-        if not self._parent:
-            self._parent = Folder(self._parent_id)
+
+        self._parent = Folder(self.parent_id)
         return self._parent
-
-    @property
-    def created(self):
-        if not (self._fetched or self._created):
-            self._fetch_data()
-        return self._created
-
-    @property
-    def last_modified(self):
-        if not (self._fetched or self._last_modified):
-            self._fetch_data()
-        return self._last_modified
-
-    @property
-    def is_locked(self):
-        if not (self._fetched or self._is_locked):
-            self._fetch_data()
-        return self._is_locked
-
-    @property
-    def lock_from(self):
-        if not (self._fetched or self._lock_from):
-            self._fetch_data()
-        return self._lock_from
-
-    @property
-    def in_trash_since(self):
-        if not (self._fetched or self._in_trash_since):
-            self._fetch_data()
-        return self._in_trash_since
-
-    @abstractmethod
-    def _set_data(self, json_data: dict):
-        raise NotImplementedError
 
     def rename(self, new_name: str) -> None:
         make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())

@@ -25,11 +25,11 @@ class ItemsList:
         return ItemsList(filtered)
 
     def filter_by_files(self) -> 'ItemsList':
-        filtered = [item for item in self._items if not getattr(item, 'isDir', True)]
+        filtered = [item for item in self._items if not getattr(item, 'is_dir', True)]
         return ItemsList(filtered)
 
     def filter_by_folders(self) -> 'ItemsList':
-        filtered = [item for item in self._items if getattr(item, 'isDir', True)]
+        filtered = [item for item in self._items if getattr(item, 'is_dir', True)]
         return ItemsList(filtered)
 
     def filter(self, condition: Callable[[Union[File, Folder]], bool]) -> 'ItemsList':

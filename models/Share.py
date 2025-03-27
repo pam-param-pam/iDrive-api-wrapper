@@ -83,37 +83,40 @@
 #         pass
 #
 #
-# class Share(Resource):
-#     def __init__(self, folder_id):
-#         super().__init__(folder_id)
-#         self.expire: Optional[str] = None
-#         self.token: Optional[str] = None
-#         self.isDir: Optional[bool] = None
-#         self.name: Optional[str] = None
-#         self.resource_id: Optional[str] = None
-#
-#     def _set_data(self, json_data: dict):
-#         for key, value in json_data.items():
-#             pass
-#             # if key == "isDir":
-#             #     self.isDir = value
-#             # elif key == "id":
-#             #     self._id = value
-#             # elif key == "name":
-#             #     self._name = value
-#             # elif key == "parent_id":
-#             #     self._parent_id = key
-#             # elif key == "created":
-#             #     self._created = value
-#             # elif key == "last_modified":
-#             #     self._last_modified = value
-#             # elif key == "isLocked":
-#             #     self._is_locked = value
-#             # elif key == "lockFrom":
-#             #     self._lock_from = value
-#             # elif key == "in_trash_since":
-#             #     self._in_trash_since = value
-#             # elif key == "children":
-#             #     self._children = self._parse_children(self, value)
-#             # else:
-#             #     logger.warning(f"[FOLDER] Unexpected renderer: {key}")
+from typing import Optional
+
+from iDrive import logger
+from models.Resource import Resource
+
+
+class Share(Resource):
+    def __init__(self, share_id, token, expire):
+        super().__init__(share_id)
+        self.expire: Optional[str] = None
+        self.token: Optional[str] = None
+
+    def _set_data(self, json_data: dict):
+
+        for key, value in json_data.items():
+            if key == "isDir":
+                self.isDir = value
+            elif key == "id":
+                self._id = value
+            elif key == "name":
+                self._name = value
+            elif key == "parent_id":
+                self._parent_id = key
+            elif key == "created":
+                self._created = value
+            elif key == "last_modified":
+                self._last_modified = value
+            elif key == "isLocked":
+                self._is_locked = value
+            elif key == "lockFrom":
+                self._lock_from = value
+            elif key == "in_trash_since":
+                self._in_trash_since = value
+            elif key == "children":
+                self._children = self._parse_children(self, value)
+            else:
+                logger.warning(f"[FOLDER] Unexpected renderer: {key}")

@@ -1,8 +1,12 @@
 import logging
+import os
 from typing import Optional
 
 from models.Enums import EncryptionMethod
 from models.Item import Item
+from models.VideoMetadata import VideoMetadata
+from models.namedTuples import MomentTuple
+from utils.decorators import autoFetchProperty
 from utils.networker import make_request
 
 logger = logging.getLogger("iDrive")
@@ -12,15 +16,16 @@ class File(Item):
 
     def __init__(self, file_id):
         super().__init__(file_id)
+        # _fetch_data
         self._thumbnail_url: Optional[str] = None
         self._size: Optional[int] = None
         self._extension: Optional[str] = None
         self._type: Optional[str] = None
         self._encryption_method: Optional[int] = None
         self._download_url: Optional[str] = None
-        self._thumbnail_url: Optional[str] = None
         self._video_position: Optional[int] = None
-
+        self._duration: Optional[int] = None
+        self._tags: Optional[list[str]] = None
         self._preview_url: Optional[str] = None
         self._iso: Optional[str] = None
         self._model_name: Optional[str] = None
@@ -28,122 +33,157 @@ class File(Item):
         self._exposure_time: Optional[str] = None
         self._focal_length: Optional[str] = None
 
-        self.isDir = False
+        # _fetch_more_data
+        self._videoMetadata: Optional[dict] = None
 
-    @property
-    def thumbnail_url(self):
-        if not (self._fetched or self._thumbnail_url):
-            self._fetch_data()
-        return self._thumbnail_url
+        # _fetch_secrets
+        self._encryption_iv: Optional[str] = None
+        self._encryption_key: Optional[str] = None
 
-    @property
-    def size(self):
-        if not (self._fetched or self._size):
-            self._fetch_data()
-        return self._size
+        # _fetch_moments
+        self._moments: Optional[list[MomentTuple]] = None
 
     @property
     def view_url(self):
         return self.download_url + "?inline=True"
 
     @property
+    @autoFetchProperty('_fetch_data')
+    def thumbnail_url(self):
+        return self._thumbnail_url
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def size(self):
+        return self._size
+
+    @property
+    @autoFetchProperty('_fetch_data')
     def extension(self):
-        if not (self._fetched or self._extension):
-            self._fetch_data()
         return self._extension
 
     @property
+    @autoFetchProperty('_fetch_data')
     def type(self):
-        if not (self._fetched or self._type):
-            self._fetch_data()
         return self._type
 
     @property
-    def encryption_method(self) -> EncryptionMethod:
-        if not (self._fetched or self._encryption_method):
-            self._fetch_data()
+    @autoFetchProperty('_fetch_data')
+    def encryption_method(self):
         return EncryptionMethod(self._encryption_method)
 
     @property
+    @autoFetchProperty('_fetch_data')
     def download_url(self):
-        if not (self._fetched or self._download_url):
-            self._fetch_data()
         return self._download_url
 
     @property
+    @autoFetchProperty('_fetch_data')
     def video_position(self):
-        if not (self._fetched or self._video_position):
-            self._fetch_data()
         return self._video_position
 
     @property
+    @autoFetchProperty('_fetch_data')
     def iso(self):
-        if not (self._fetched or self._iso):
-            self._fetch_data()
         return self._iso
 
     @property
+    @autoFetchProperty('_fetch_data')
     def aperture(self):
-        if not (self._fetched or self._aperture):
-            self._fetch_data()
         return self._aperture
 
     @property
+    @autoFetchProperty('_fetch_data')
     def exposure_time(self):
-        if not (self._fetched or self._exposure_time):
-            self._fetch_data()
         return self._exposure_time
 
     @property
+    @autoFetchProperty('_fetch_data')
     def focal_length(self):
-        if not (self._fetched or self._focal_length):
-            self._fetch_data()
         return self._focal_length
 
     @property
+    @autoFetchProperty('_fetch_data')
     def preview_url(self):
-        if not (self._fetched or self._preview_url):
-            self._fetch_data()
         return self._preview_url
 
     @property
-    def secrets(self):
+    @autoFetchProperty('_fetch_data')
+    def duration(self):
+        return self._duration
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def tags(self):
         # todo
-        return None
+        pass
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def isVideoMetadata(self):
+        return self._isVideoMetadata
+
+    @property
+    @autoFetchProperty('_fetch_more_data')
+    def videoMetadata(self) -> VideoMetadata:
+        return VideoMetadata(self._videoMetadata)
+
+    @property
+    @autoFetchProperty('_fetch_secrets')
+    def encryption_iv(self):
+        return self._encryption_iv
+
+    @property
+    @autoFetchProperty('_fetch_secrets')
+    def encryption_key(self):
+        return self._encryption_key
+
+    @property
+    @autoFetchProperty('_fetch_moments')
+    def moments(self):
+        return self._moments
 
     def __str__(self):
         return f"File({self.name})"
 
+    def _set_more_data(self, data):
+        self._videoMetadata = data
+
     def _fetch_data(self):
         data = make_request("GET", f"file/{self.id}", headers=self._get_password_header())
         self._set_data(data)
-        self._fetched = True
+
+    def _fetch_moments(self):
+        data = make_request("GET", f"file/moments/{self.id}", headers=self._get_password_header())
+        self._moments = []
+        for element in data:
+            self._moments.append(MomentTuple(**element))
+
+    def create_moment(self, timestamp):
+        raise NotImplemented()
+        # todo
+        data = {"timestamp": 73, "file_id": "9FbHJVrVSV2zF3BFE4Xxch", "size": 25397, "message_id": "1354806011386400962", "attachment_id": "1354806011499905086",
+                "message_author_id": "1344677807225311283"}
+        data = make_request("POST", f"file/moment/add", headers=self._get_password_header())
+
+    def play(self):
+        if self.type != "video":
+            raise ValueError("File is not a video")
+        os.system(f"ffplay -i {self.download_url}")
+
+    def _fetch_secrets(self):
+        data = make_request("GET", f"file/secrets/{self.id}", headers=self._get_password_header())
+        self._encryption_key = data['key']
+        self._encryption_iv = data['iv']
 
     def download(self, callback=None):
         from utils.common import download_from_url
         download_from_url(self.download_url)
 
     def _set_data(self, json_data: dict):
+        json_data = super()._set_data(json_data)
         for key, value in json_data.items():
-            if key == "isDir":
-                self.isDir = value
-            elif key == "id":
-                self._id = value
-            elif key == "name":
-                self._name = value
-            elif key == "parent_id":
-                self._parent_id = value
-            elif key == "created":
-                self._created = value
-            elif key == "last_modified":
-                self._last_modified = value
-            elif key == "isLocked":
-                self._is_locked = value
-            elif key == "lockFrom":
-                self._lock_from = value
-            elif key == "in_trash_since":
-                self._in_trash_since = value
-            elif key == "size":
+            if key == "size":
                 self._size = value
             elif key == "extension":
                 self._extension = value
@@ -169,5 +209,11 @@ class File(Item):
                 self._exposure_time = value
             elif key == "focal_length":
                 self._focal_length = value
+            elif key == "tags":
+                self._tags = value
+            elif key == "duration":
+                self._duration = value
+            elif key == "isVideoMetadata":
+                self._isVideoMetadata = value
             else:
                 logger.warning(f"[FILE] Unexpected key: {key}")
