@@ -1,8 +1,9 @@
 from typing import List, Union, Callable, Optional
 from datetime import datetime
 
-from models.File import File
-from models.Folder import Folder
+from .File import File
+from .Folder import Folder
+
 
 class ItemsList:
     def __init__(self, items: List[Union[File, Folder]]):
@@ -50,6 +51,12 @@ class ItemsList:
                 searched.append(item)
         return ItemsList(searched)
 
+    def first(self) -> Optional[Union['File', 'Folder']]:
+        return self._items[0] if self._items else None
+
+    def get_as_list(self) -> list:
+        return list(self._items)
+
     def __iter__(self):
         return iter(self._items)
 
@@ -59,5 +66,13 @@ class ItemsList:
     def __getitem__(self, index) -> Union[File, Folder]:
         return self._items[index]
 
+    def __contains__(self, item) -> bool:
+        return item in self._items
+
+    def __bool__(self):
+        return bool(self._items)
+
     def __repr__(self):
         return f"{self._items}"
+
+# todo make an actual library

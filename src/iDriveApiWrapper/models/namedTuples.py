@@ -3,8 +3,7 @@ from typing import NamedTuple, Optional
 
 MomentTuple = namedtuple('Moment', ['file_id', 'timestamp', 'created_at', 'url'])
 
-# Base class for common fields
-# NamedTuple for VideoTrack
+
 class VideoTrackTuple(NamedTuple):
     bitrate: Optional[int] = None
     codec: Optional[str] = None
@@ -17,7 +16,6 @@ class VideoTrackTuple(NamedTuple):
     fps: Optional[int] = None
     type: Optional[int] = None
 
-# NamedTuple for AudioTrack
 class AudioTrackTuple(NamedTuple):
     bitrate: Optional[int] = None
     codec: Optional[str] = None
@@ -31,7 +29,6 @@ class AudioTrackTuple(NamedTuple):
     sample_size: Optional[int] = None
     type: Optional[int] = None
 
-# NamedTuple for SubtitleTrack
 class SubtitleTrackTuple(NamedTuple):
     bitrate: Optional[int] = None
     codec: Optional[str] = None

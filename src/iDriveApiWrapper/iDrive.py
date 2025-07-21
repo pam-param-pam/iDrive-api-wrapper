@@ -1,14 +1,15 @@
 import logging
 from typing import Union, List
 
-from Config import APIConfig
-from models.Item import Item
-from models.ItemsList import ItemsList
-from models.File import File
-from models.Folder import Folder
-from models.User import User
-from utils import common
-from utils.networker import make_request
+
+from .Config import APIConfig
+from .models.File import File
+from .models.Folder import Folder
+from .models.Item import Item
+from .models.ItemsList import ItemsList
+from .models.User import User
+from .utils import common
+from .utils.networker import make_request
 
 # Create a custom logger
 logger = logging.getLogger("iDrive")
@@ -46,7 +47,7 @@ class Client:
         return data['auth_token']
 
     def _fetch_user(self) -> None:
-        data = make_request("GET", "user/me")
+        data = make_request("GET", "users/me")
         self._user = User(data)
         APIConfig.user = self._user
 
@@ -65,11 +66,13 @@ class Client:
     def get_file(self, file_id, password=None) -> File:
         file = File(file_id)
         file.set_password(password)
+        file._fetch_data()
         return file
 
     def get_folder(self, folder_id, password=None) -> Folder:
         folder = Folder(folder_id)
         folder.set_password(password)
+        folder._fetch_data()
         return folder
 
     def set_download_path(self, path: str):

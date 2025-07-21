@@ -1,17 +1,17 @@
 import logging
+from typing import Union, Optional, TYPE_CHECKING
 
-from typing import Union, Optional,TYPE_CHECKING
+from overrides import overrides
 
-from models.Item import Item
-from utils.decorators import autoFetchProperty
-from utils.networker import make_request
-
-from models.File import File
+from .File import File
+from .Item import Item
+from ..utils.decorators import autoFetchProperty
+from ..utils.networker import make_request
 
 logger = logging.getLogger("iDrive")
 
 if TYPE_CHECKING:
-    from models.ItemsList import ItemsList
+    from ..models.ItemsList import ItemsList
 
 
 class Folder(Item):
@@ -45,13 +45,15 @@ class Folder(Item):
     def __str__(self):
         return f"Folder({self.name})"
 
+    @overrides
     def _set_more_data(self, data) -> None:
         self._folder_size = data['folder_size']
         self._folder_count = data['folder_count']
         self._file_count = data['file_count']
 
+    @overrides
     def _fetch_data(self) -> None:
-        data = make_request("GET", f"folder/{self.id}", headers=self._get_password_header())
+        data = make_request("GET", f"folders/{self.id}", headers=self._get_password_header())
         self._set_data(data['folder'])
         self._fetched = True
 
@@ -66,15 +68,16 @@ class Folder(Item):
     def upload(self):
         pass
 
+    @overrides
     def download(self, callback=None) -> None:
-        from utils.common import get_zip_download_url, download_from_url
-        download_url = get_zip_download_url([self])
+        from ..utils.common import get_zip_download_url, download_from_url
 
+        download_url = get_zip_download_url([self])
         download_from_url(download_url)
 
     @staticmethod
     def _parse_children(parent: Union['Folder', None], data: dict):
-        from models.ItemsList import ItemsList
+        from ..models.ItemsList import ItemsList
 
         children = []
         for element in data:
@@ -91,6 +94,7 @@ class Folder(Item):
 
         return ItemsList(children)
 
+    @overrides
     def _set_data(self, json_data: dict) -> None:
         json_data = super()._set_data(json_data)
         for key, value in json_data.items():
@@ -98,4 +102,3 @@ class Folder(Item):
                 self._children = self._parse_children(self, value)
             else:
                 logger.warning(f"[FOLDER] Unexpected renderer: {key}")
-

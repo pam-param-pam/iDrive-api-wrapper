@@ -1,10 +1,12 @@
-from abc import abstractmethod, ABC
+from abc import ABC
 from typing import Optional, Union
 
-from utils.networker import make_request
+from overrides import EnforceOverrides
+
+from ..utils.networker import make_request
 
 
-class Resource(ABC):
+class Resource(ABC, EnforceOverrides):
     def __init__(self, resource_id):
         self._id: str = resource_id
         self._password: Optional[str] = None
@@ -14,6 +16,9 @@ class Resource(ABC):
 
     def set_password(self, password: Union[str, None]) -> None:
         self._password = password
+
+    def get_password(self) -> str:
+        return self._password
 
     def check_password(self, password: str):
         make_request("GET", f"resource/password/{self._id}", headers={"x-resource-password": password})

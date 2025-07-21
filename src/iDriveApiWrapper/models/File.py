@@ -2,12 +2,14 @@ import logging
 import os
 from typing import Optional
 
-from models.Enums import EncryptionMethod
-from models.Item import Item
-from models.VideoMetadata import VideoMetadata
-from models.namedTuples import MomentTuple
-from utils.decorators import autoFetchProperty
-from utils.networker import make_request
+from overrides import overrides
+
+from .Enums import EncryptionMethod
+from .VideoMetadata import VideoMetadata
+from .namedTuples import MomentTuple
+from ..models.Item import Item
+from ..utils.decorators import autoFetchProperty
+from ..utils.networker import make_request
 
 logger = logging.getLogger("iDrive")
 
@@ -26,6 +28,7 @@ class File(Item):
         self._video_position: Optional[int] = None
         self._duration: Optional[int] = None
         self._tags: Optional[list[str]] = None
+        self._crc: Optional[int] = None
         self._preview_url: Optional[str] = None
         self._iso: Optional[str] = None
         self._model_name: Optional[str] = None
@@ -81,6 +84,11 @@ class File(Item):
     @autoFetchProperty('_fetch_data')
     def video_position(self):
         return self._video_position
+
+    @property
+    @autoFetchProperty('_fetch_data')
+    def crc(self):
+        return self._crc
 
     @property
     @autoFetchProperty('_fetch_data')
@@ -146,15 +154,20 @@ class File(Item):
     def __str__(self):
         return f"File({self.name})"
 
+    def __repr__(self):
+        return str(self)
+
+    @overrides
     def _set_more_data(self, data):
         self._videoMetadata = data
 
+    @overrides
     def _fetch_data(self):
-        data = make_request("GET", f"file/{self.id}", headers=self._get_password_header())
+        data = make_request("GET", f"files/{self.id}", headers=self._get_password_header())
         self._set_data(data)
 
     def _fetch_moments(self):
-        data = make_request("GET", f"file/moments/{self.id}", headers=self._get_password_header())
+        data = make_request("GET", f"files/moments/{self.id}", headers=self._get_password_header())
         self._moments = []
         for element in data:
             self._moments.append(MomentTuple(**element))
@@ -164,7 +177,7 @@ class File(Item):
         # todo
         data = {"timestamp": 73, "file_id": "9FbHJVrVSV2zF3BFE4Xxch", "size": 25397, "message_id": "1354806011386400962", "attachment_id": "1354806011499905086",
                 "message_author_id": "1344677807225311283"}
-        data = make_request("POST", f"file/moment/add", headers=self._get_password_header())
+        data = make_request("POST", f"files/moment/add", headers=self._get_password_header())
 
     def play(self):
         if self.type != "video":
@@ -176,11 +189,13 @@ class File(Item):
         self._encryption_key = data['key']
         self._encryption_iv = data['iv']
 
-    def download(self, callback=None):
-        from utils.common import download_from_url
-        download_from_url(self.download_url)
+    @overrides
+    def download(self, folder_path="", callback=None):
+        from ..utils.common import download_from_url
+        download_from_url(self.download_url, folder_path)
 
-    def _set_data(self, json_data: dict):
+    @overrides
+    def _set_data(self, json_data: dict) -> None:
         json_data = super()._set_data(json_data)
         for key, value in json_data.items():
             if key == "size":
@@ -215,5 +230,7 @@ class File(Item):
                 self._duration = value
             elif key == "isVideoMetadata":
                 self._isVideoMetadata = value
+            elif key == "crc":
+                self._crc = value
             else:
                 logger.warning(f"[FILE] Unexpected key: {key}")

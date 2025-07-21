@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-from models.namedTuples import VideoTrackTuple, AudioTrackTuple, SubtitleTrackTuple
+from ..models.namedTuples import VideoTrackTuple, SubtitleTrackTuple, AudioTrackTuple
 
 logger = logging.getLogger("iDrive")
 
@@ -16,9 +16,9 @@ class VideoMetadata:
         self._is_fragmented: Optional[bool, None] = None
         self._tracks: Optional[list, None] = None
 
-        self._video_tracks = []
-        self._audio_tracks = []
-        self._subtitle_tracks = []
+        self._video_tracks: list[VideoTrackTuple] = []
+        self._audio_tracks: list[AudioTrackTuple] = []
+        self._subtitle_tracks: list[SubtitleTrackTuple] = []
         self._set_data(data)
 
 

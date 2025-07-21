@@ -1,0 +1,31 @@
+# pyproject.toml
+
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iDriveApiWrapper"
+version = "1.0.0"
+description = "API wrapper for iDrive project"
+readme = "README.md"
+
+authors = [{ name = "Pamparampampam" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["iDrive", "discord", "fileStorage", "API", "wrapper"]
+
+dependencies = [
+    "tqdm ~= 4.67.1",
+    "httpx ~= 0.28.1",
+    "overrides ~= 7.7.0"
+]
+requires-python = ">=3.7"
+
+[project.urls]
+Github = "https://github.com/pam-param-pam/iDrive-api-wrapper"
+

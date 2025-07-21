@@ -3,18 +3,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, TYPE_CHECKING
 
-from models.Resource import Resource
-from utils.decorators import autoFetchProperty
-from utils.networker import make_request
+from ..models.Resource import Resource
+from ..utils.decorators import autoFetchProperty
+from ..utils.networker import make_request
 
 if TYPE_CHECKING:
-    from Folder import Folder
+    from .Folder import Folder
 
 
 class Item(Resource, ABC):
 
     def __init__(self, item_id):
-        from models import Folder
+        from ..models import Folder
         super().__init__(item_id)
         self._is_dir: Optional[bool] = None
         self._name: Optional[str] = None
@@ -41,11 +41,11 @@ class Item(Resource, ABC):
     def _set_more_data(self, data: dict):
         raise NotImplementedError
 
-    def _fetch_more_data(self):
+    def _fetch_more_data(self) -> None:
         data = make_request("GET", f"item/moreinfo/{self.id}", headers=self._get_password_header())
         self._set_more_data(data)
 
-    def _set_data(self, json_data: dict):
+    def _set_data(self, json_data: dict) -> Optional[dict]:
         unmatched_keys = {}
         for key, value in json_data.items():
             if key == "isDir":
@@ -112,28 +112,29 @@ class Item(Resource, ABC):
 
     @property
     def parent(self):
-        from models.Folder import Folder
+        from .Folder import Folder
         if not self.parent_id:
             raise ValueError("Root folder has no parent!")
 
         self._parent = Folder(self.parent_id)
+        self._parent.set_password(self.get_password())
         return self._parent
 
     def rename(self, new_name: str) -> None:
         make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())
 
     def move_to_trash(self) -> None:
-        from utils import common
-        common.move_to_trash([self])
+        from ..utils.common import move_to_trash
+        move_to_trash([self])
 
     def delete(self) -> None:
-        from utils import common
-        common.move_to_trash([self])
+        from ..utils.common import delete
+        delete([self])
 
     def restore_from_trash(self) -> None:
-        from utils import common
-        common.move_to_trash([self])
+        from ..utils.common import move_to_trash
+        move_to_trash([self])
 
     def move(self, new_parent: Folder) -> None:
-        from utils import common
-        common.move([self], new_parent)
+        from ..utils.common import move
+        move([self], new_parent)

@@ -1,4 +1,4 @@
-from models.Enums import EncryptionMethod
+from .Enums import EncryptionMethod
 
 
 class User:
