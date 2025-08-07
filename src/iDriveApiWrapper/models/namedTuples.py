@@ -1,7 +1,7 @@
 from collections import namedtuple
 from typing import NamedTuple, Optional
 
-MomentTuple = namedtuple('Moment', ['file_id', 'timestamp', 'created_at', 'url'])
+VisitsNamedTuple = namedtuple('ShareVisit', ['user', 'ip', 'user_agent', 'access_count', 'last_access_time'])
 
 
 class VideoTrackTuple(NamedTuple):

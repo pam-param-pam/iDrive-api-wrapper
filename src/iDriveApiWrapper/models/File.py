@@ -5,8 +5,9 @@ from typing import Optional
 from overrides import overrides
 
 from .Enums import EncryptionMethod
+from .Moment import Moment
+from .Subtitle import Subtitle
 from .VideoMetadata import VideoMetadata
-from .namedTuples import MomentTuple
 from ..models.Item import Item
 from ..utils.decorators import autoFetchProperty
 from ..utils.networker import make_request
@@ -44,7 +45,10 @@ class File(Item):
         self._encryption_key: Optional[str] = None
 
         # _fetch_moments
-        self._moments: Optional[list[MomentTuple]] = None
+        self._moments: Optional[list[Moment]] = None
+
+        # _fetch_subtitles
+        self._subtitles: Optional[list[Subtitle]] = None
 
     @property
     def view_url(self):
@@ -151,6 +155,11 @@ class File(Item):
     def moments(self):
         return self._moments
 
+    @property
+    @autoFetchProperty('_fetch_subtitles')
+    def subtitles(self):
+        return self._subtitles
+
     def __str__(self):
         return f"File({self.name})"
 
@@ -167,10 +176,22 @@ class File(Item):
         self._set_data(data)
 
     def _fetch_moments(self):
-        data = make_request("GET", f"files/moments/{self.id}", headers=self._get_password_header())
+        data = make_request("GET", f"files/{self.id}/moments", headers=self._get_password_header())
         self._moments = []
         for element in data:
-            self._moments.append(MomentTuple(**element))
+            moment = Moment(**element)
+            if self.get_password():
+                moment.set_password(self.get_password())
+            self._moments.append(Moment(**element))
+
+    def _fetch_subtitles(self):
+        data = make_request("GET", f"files/{self.id}/subtitles", headers=self._get_password_header())
+        self._subtitles = []
+        for element in data:
+            subtitle = Subtitle(**element)
+            if self.get_password():
+                subtitle.set_password(self.get_password())
+            self._subtitles.append(subtitle)
 
     def create_moment(self, timestamp):
         raise NotImplemented()
@@ -190,9 +211,9 @@ class File(Item):
         self._encryption_iv = data['iv']
 
     @overrides
-    def download(self, folder_path="", callback=None):
+    def download(self, folder_path="", callback=None) -> str:
         from ..utils.common import download_from_url
-        download_from_url(self.download_url, folder_path)
+        return download_from_url(self.download_url, folder_path)
 
     @overrides
     def _set_data(self, json_data: dict) -> None:

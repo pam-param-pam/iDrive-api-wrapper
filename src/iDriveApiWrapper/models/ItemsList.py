@@ -52,7 +52,9 @@ class ItemsList:
         return ItemsList(searched)
 
     def first(self) -> Optional[Union['File', 'Folder']]:
-        return self._items[0] if self._items else None
+        if not self._items:
+            raise IndexError("No items available")
+        return self._items[0]
 
     def get_as_list(self) -> list:
         return list(self._items)

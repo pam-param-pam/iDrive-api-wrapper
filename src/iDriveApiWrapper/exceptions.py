@@ -24,3 +24,9 @@ class RateLimitException(IDriveException):
 
 class MissingOrIncorrectResourcePasswordError(IDriveException):
     """Raised when 469"""
+
+class InternalServerError(IDriveException):
+    """Raised when 500"""
+
+class ServiceUnavailable(IDriveException):
+    """Raised when 503"""

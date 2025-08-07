@@ -69,11 +69,11 @@ class Folder(Item):
         pass
 
     @overrides
-    def download(self, callback=None) -> None:
+    def download(self, callback=None) -> str:
         from ..utils.common import get_zip_download_url, download_from_url
 
         download_url = get_zip_download_url([self])
-        download_from_url(download_url)
+        return download_from_url(download_url)
 
     @staticmethod
     def _parse_children(parent: Union['Folder', None], data: dict):

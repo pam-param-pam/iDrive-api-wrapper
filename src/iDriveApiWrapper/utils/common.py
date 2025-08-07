@@ -1,3 +1,4 @@
+import os
 import urllib
 from typing import List
 from urllib.parse import unquote
@@ -5,6 +6,7 @@ from urllib.parse import unquote
 import requests
 from tqdm import tqdm
 
+from ..Config import APIConfig
 from ..models.Folder import Folder
 from ..models.Item import Item
 from .networker import make_request
@@ -63,7 +65,7 @@ def parse_filename(content_disposition):
     return filename
 
 
-def download_from_url(download_url: str, path: str = None):
+def download_from_url(download_url: str, path: str = None) -> str:
     # Perform the download
     response = requests.get(download_url, stream=True)
     response.raise_for_status()
@@ -72,8 +74,16 @@ def download_from_url(download_url: str, path: str = None):
     content_disposition = response.headers.get('Content-Disposition')
     filename = parse_filename(content_disposition)
 
-    if not path:
-        path = filename
+    if path is None:
+        # Default: construct from APIConfig
+        os.makedirs(APIConfig.download_folder, exist_ok=True)
+        path = os.path.join(APIConfig.download_folder, filename)
+    elif os.path.isdir(path):
+        # If path is a directory, join with filename
+        path = os.path.join(path, filename)
+    else:
+        # Path is assumed to be a full file path
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
     # Get the total file size from the Content-Length header (if available)
     total_size = int(response.headers.get('content-length', 0))
@@ -88,3 +98,5 @@ def download_from_url(download_url: str, path: str = None):
 
                 # Update the progress bar
                 progress_bar.update(len(chunk))
+
+    return path

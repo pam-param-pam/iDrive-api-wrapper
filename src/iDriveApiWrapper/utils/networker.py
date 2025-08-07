@@ -7,7 +7,8 @@ import httpx as httpx
 
 from ..Config import APIConfig
 from ..Constants import BASE_URL
-from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitException
+from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitException, UnauthorizedError, \
+    ServiceUnavailable, InternalServerError
 
 logger = logging.getLogger("iDrive")
 
@@ -31,7 +32,6 @@ def make_request(method: str, endpoint: str, data: dict = None, headers: dict = 
     headers.update(_get_headers())
 
     response = httpxClient.request(method, url, headers=headers,  json=data, params=params, files=files)
-
     if not response.is_success:
         try:
             error = json.loads(response.content)
@@ -45,6 +45,11 @@ def make_request(method: str, endpoint: str, data: dict = None, headers: dict = 
             raise ResourcePermissionError(error)
         elif response.status_code == 404:
             raise ResourceNotFoundError(error)
+        elif response.status_code == 500:
+            raise InternalServerError(error)
+        elif response.status_code == 503:
+            raise ServiceUnavailable(error)
+
         elif response.status_code == 429:
             retry_after = response.headers.get("Retry-After")
             wait_time = int(retry_after) if retry_after and retry_after.isdigit() else DEFAULT_RETRY_AFTER

@@ -7,8 +7,11 @@ from .models.File import File
 from .models.Folder import Folder
 from .models.Item import Item
 from .models.ItemsList import ItemsList
+from .models.Share import Share
 from .models.User import User
 from .utils import common
+from .utils.UltraDownloader import UltraDownloader
+from .utils.Uploader import Uploader
 from .utils.networker import make_request
 
 # Create a custom logger
@@ -34,6 +37,8 @@ class Client:
         self._token = token
         self._user: Union[User, None] = None
         APIConfig.token = token
+        self._ultraDownloader = None
+        self.uploader = Uploader()
 
     @property
     def user(self):
@@ -43,11 +48,12 @@ class Client:
 
     @staticmethod
     def login(username: str, password: str) -> str:
+        # todo leaking token if already logged in + another login
         data = make_request("POST", "auth/token/login", data={'username': username, 'password': password})
         return data['auth_token']
 
     def _fetch_user(self) -> None:
-        data = make_request("GET", "users/me")
+        data = make_request("GET", "user/me")
         self._user = User(data)
         APIConfig.user = self._user
 
@@ -90,6 +96,25 @@ class Client:
     def move(self, items: List[Item], new_parent: Folder):
         common.move(items, new_parent)
 
-    def download(self, items: List[Item], callback=None):
+    def download(self, items: List[Item], callback=None) -> str:
         download_url = common.get_zip_download_url(items)
-        common.download_from_url(download_url)
+        return common.download_from_url(download_url)
+
+    def get_share(self, token):
+        return Share(token)
+
+    def get_shares(self):
+        pass
+
+    def get_profile_settings(self):
+        pass
+
+    def get_discord_settings(self):
+        pass
+
+    def get_ultra_downloader(self):
+        if not self._ultraDownloader:
+            discord_settings = self.get_discord_settings()
+            self._ultraDownloader = UltraDownloader(max_workers=2*len(discord_settings.bots))
+
+        return self._ultraDownloader

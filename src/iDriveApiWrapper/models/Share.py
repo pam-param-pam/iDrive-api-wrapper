@@ -81,42 +81,41 @@
 #     @overrides
 #     def children(self):
 #         pass
-#
+
 #
 from typing import Optional
 
-from iDrive import logger
-from models.Resource import Resource
+from .namedTuples import VisitsNamedTuple
+from ..models.Resource import Resource
+from ..utils.networker import make_request
 
 
 class Share(Resource):
-    def __init__(self, share_id, token, expire):
-        super().__init__(share_id)
-        self.expire: Optional[str] = None
-        self.token: Optional[str] = None
+    def __init__(self, token):
+        super().__init__(token)
+        self.token: str = token
+        self._expire: Optional[str] = None
+        self._id: Optional[str] = None
 
     def _set_data(self, json_data: dict):
-
         for key, value in json_data.items():
-            if key == "isDir":
-                self.isDir = value
-            elif key == "id":
-                self._id = value
-            elif key == "name":
-                self._name = value
-            elif key == "parent_id":
-                self._parent_id = key
-            elif key == "created":
-                self._created = value
-            elif key == "last_modified":
-                self._last_modified = value
-            elif key == "isLocked":
-                self._is_locked = value
-            elif key == "lockFrom":
-                self._lock_from = value
-            elif key == "in_trash_since":
-                self._in_trash_since = value
-            elif key == "children":
-                self._children = self._parse_children(self, value)
-            else:
-                logger.warning(f"[FOLDER] Unexpected renderer: {key}")
+            print(key)
+
+    def get_visits(self) -> list[VisitsNamedTuple]:
+        data = make_request("GET", f"shares/{self.token}/visits")
+        visit_tuples = []
+        for visit in data["accesses"]:
+            visit_tuples.append(VisitsNamedTuple(**visit))
+        return visit_tuples
+
+    def delete(self):
+        pass
+
+    def get_share_link(self):
+        pass
+
+    def get_item_inside(self):
+        pass
+
+    def __str__(self):
+        return f"Share({self.token})"
