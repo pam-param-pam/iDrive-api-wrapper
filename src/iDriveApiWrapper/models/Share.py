@@ -81,25 +81,52 @@
 #     @overrides
 #     def children(self):
 #         pass
-
+import logging
 #
 from typing import Optional
+
+from overrides import overrides
 
 from .namedTuples import VisitsNamedTuple
 from ..models.Resource import Resource
 from ..utils.networker import make_request
 
+logger = logging.getLogger("iDrive")
 
+
+"""Stinking pile of hot garbage"""
 class Share(Resource):
     def __init__(self, token):
         super().__init__(token)
         self.token: str = token
         self._expire: Optional[str] = None
         self._id: Optional[str] = None
+        self._name: Optional[str] = None
+        self._resource_id: Optional[str] = None
+        self._is_dir: Optional[bool] = None
 
     def _set_data(self, json_data: dict):
         for key, value in json_data.items():
-            print(key)
+            if key == "expire":
+                self._expire = value
+            elif key == "name":
+                self._name = value
+            elif key == "isDir":
+                self._is_dir = value
+            elif key == "token":
+                self.token = value
+            elif key == "resource_id":
+                self._resource_id = value
+            elif key == "id":
+                self._id = value
+            else:
+                logger.warning(f"[Share] Unexpected key: {key}")
+    #
+    # @overrides
+    # def _fetch_data(self):
+    #     pass
+
+
 
     def get_visits(self) -> list[VisitsNamedTuple]:
         data = make_request("GET", f"shares/{self.token}/visits")
@@ -111,11 +138,9 @@ class Share(Resource):
     def delete(self):
         pass
 
-    def get_share_link(self):
-        pass
-
     def get_item_inside(self):
         pass
 
     def __str__(self):
-        return f"Share({self.token})"
+        return f"Share({self.name})"
+

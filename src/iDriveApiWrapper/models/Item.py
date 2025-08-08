@@ -42,7 +42,7 @@ class Item(Resource, ABC):
         raise NotImplementedError
 
     def _fetch_more_data(self) -> None:
-        data = make_request("GET", f"item/moreinfo/{self.id}", headers=self._get_password_header())
+        data = make_request("GET", f"items/{self.id}/moreinfo", headers=self._get_password_header())
         self._set_more_data(data)
 
     def _set_data(self, json_data: dict) -> Optional[dict]:
@@ -70,10 +70,6 @@ class Item(Resource, ABC):
                 unmatched_keys[key] = value
 
         return unmatched_keys
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     @autoFetchProperty('_fetch_data')
@@ -119,6 +115,9 @@ class Item(Resource, ABC):
         self._parent = Folder(self.parent_id)
         self._parent.set_password(self.get_password())
         return self._parent
+
+    def check_password(self, password: str):
+        make_request("GET", f"items/{self.id}/password", headers={"x-resource-password": password})
 
     def rename(self, new_name: str) -> None:
         make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())

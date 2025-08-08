@@ -8,7 +8,7 @@ import httpx as httpx
 from ..Config import APIConfig
 from ..Constants import BASE_URL
 from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitException, UnauthorizedError, \
-    ServiceUnavailable, InternalServerError
+    ServiceUnavailable, InternalServerError, BadMethodError
 
 logger = logging.getLogger("iDrive")
 
@@ -34,21 +34,23 @@ def make_request(method: str, endpoint: str, data: dict = None, headers: dict = 
     response = httpxClient.request(method, url, headers=headers,  json=data, params=params, files=files)
     if not response.is_success:
         try:
-            error = json.loads(response.content)
+            error_message = json.loads(response.content)
         except JSONDecodeError:
-            error = response.content
+            error_message = response.content
         if response.status_code == 400:
-            raise BadRequestError(error)
+            raise BadRequestError(error_message)
         elif response.status_code == 401:
-            raise UnauthorizedError(error)
+            raise UnauthorizedError(error_message)
         elif response.status_code == 403:
-            raise ResourcePermissionError(error)
+            raise ResourcePermissionError(error_message)
         elif response.status_code == 404:
-            raise ResourceNotFoundError(error)
+            raise ResourceNotFoundError(error_message)
+        elif response.status_code == 405:
+            raise BadMethodError(f"Expected method: {response.headers.get('Allow')}. Instead of: {method}")
         elif response.status_code == 500:
-            raise InternalServerError(error)
+            raise InternalServerError(error_message)
         elif response.status_code == 503:
-            raise ServiceUnavailable(error)
+            raise ServiceUnavailable(error_message)
 
         elif response.status_code == 429:
             retry_after = response.headers.get("Retry-After")
@@ -66,9 +68,9 @@ def make_request(method: str, endpoint: str, data: dict = None, headers: dict = 
                     error = response.content
                 raise RateLimitException(error)
         elif response.status_code == 469:
-            raise MissingOrIncorrectResourcePasswordError(error)
+            raise MissingOrIncorrectResourcePasswordError(error_message)
         else:
-            raise IDriveException(error)
+            raise IDriveException(f"Status code: {response.status_code}, content={response.content}")
 
     if response.status_code == 200:
         return response.json()

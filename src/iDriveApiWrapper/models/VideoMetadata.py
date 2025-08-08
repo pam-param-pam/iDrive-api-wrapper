@@ -21,7 +21,6 @@ class VideoMetadata:
         self._subtitle_tracks: list[SubtitleTrackTuple] = []
         self._set_data(data)
 
-
     @property
     def brands(self):
         return self._brands
@@ -58,7 +57,7 @@ class VideoMetadata:
     def audio_tracks(self):
         return self._audio_tracks
 
-    def _set_data(self, data):
+    def _set_data(self, data) -> None:
         for key, value in data.items():
             if key == "brands":
                 self._brands = value
@@ -81,7 +80,7 @@ class VideoMetadata:
             else:
                 logger.warning(f"[VideoMetadata] Unexpected renderer: {key}")
 
-    def _set_tracks(self, tracks):
+    def _set_tracks(self, tracks) -> None:
         self._tracks = tracks
         for track in tracks:
             if track['type'] == "Video":

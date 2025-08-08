@@ -19,24 +19,24 @@ logger = logging.getLogger("iDrive")
 
 
 class UltraDownloader:
-    def __init__(self, max_workers: int = 5):
+    def __init__(self, workers: int = 1):
         os.makedirs(APIConfig.download_folder, exist_ok=True)
         self.lock = threading.Lock()
-        self.max_workers = max_workers
+        self.workers = workers
 
     def download(self, for_download: Union[File, Folder, List[Union[File, Folder]]], password: str = None):
         ids = [for_download.id]
-        self._handle_download(ids)
+        self._handle_download(ids, password)
 
-    def _handle_download(self, ids):
-        files = self._fetch_metadata(ids)
+    def _handle_download(self, ids: List[str], password: str = None):
+        files = self._fetch_metadata(ids, password)
         for file in files:
             self.process_file(file)
 
     def download_from_ids(self, ids: List[str], password: str = None):
         pass
 
-    def _fetch_metadata(self, ids=None, password=None):
+    def _fetch_metadata(self, ids: List[str] = None, password: str = None):
         response_data = make_request('POST', "items/ultraDownload", data={'ids': ids})
         return response_data
 
@@ -61,7 +61,7 @@ class UltraDownloader:
         return total_bytes
 
     def download_all_fragments(self, fragments, file_dir):
-        total_size_estimate = sum([fragment.get("size", 0) for fragment in fragments])  # optional estimate
+        total_size_estimate = sum([fragment.get("size", 0) for fragment in fragments])
         progress = tqdm(
             total=total_size_estimate or None,
             desc="Downloading",
@@ -71,7 +71,7 @@ class UltraDownloader:
             dynamic_ncols=True,
         )
 
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
             futures = {executor.submit(self.download_fragment, f, file_dir): f for f in fragments}
             for future in as_completed(futures):
                 try:

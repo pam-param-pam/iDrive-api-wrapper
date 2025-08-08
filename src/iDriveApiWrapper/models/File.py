@@ -7,6 +7,7 @@ from overrides import overrides
 from .Enums import EncryptionMethod
 from .Moment import Moment
 from .Subtitle import Subtitle
+from .Tag import Tag
 from .VideoMetadata import VideoMetadata
 from ..models.Item import Item
 from ..utils.decorators import autoFetchProperty
@@ -28,7 +29,6 @@ class File(Item):
         self._download_url: Optional[str] = None
         self._video_position: Optional[int] = None
         self._duration: Optional[int] = None
-        self._tags: Optional[list[str]] = None
         self._crc: Optional[int] = None
         self._preview_url: Optional[str] = None
         self._iso: Optional[str] = None
@@ -38,7 +38,7 @@ class File(Item):
         self._focal_length: Optional[str] = None
 
         # _fetch_more_data
-        self._videoMetadata: Optional[dict] = None
+        self._videoMetadata: Optional[VideoMetadata] = None
 
         # _fetch_secrets
         self._encryption_iv: Optional[str] = None
@@ -49,6 +49,9 @@ class File(Item):
 
         # _fetch_subtitles
         self._subtitles: Optional[list[Subtitle]] = None
+
+        # _fetch_tags
+        self._tags: Optional[list[Tag]] = None
 
     @property
     def view_url(self):
@@ -125,10 +128,9 @@ class File(Item):
         return self._duration
 
     @property
-    @autoFetchProperty('_fetch_data')
+    @autoFetchProperty('_fetch_tags')
     def tags(self):
-        # todo
-        pass
+        return self._tags
 
     @property
     @autoFetchProperty('_fetch_data')
@@ -137,7 +139,7 @@ class File(Item):
 
     @property
     @autoFetchProperty('_fetch_more_data')
-    def videoMetadata(self) -> VideoMetadata:
+    def videoMetadata(self):
         return VideoMetadata(self._videoMetadata)
 
     @property
@@ -175,6 +177,16 @@ class File(Item):
         data = make_request("GET", f"files/{self.id}", headers=self._get_password_header())
         self._set_data(data)
 
+    def _fetch_tags(self):
+        data = make_request("GET", f"files/{self.id}/tags", headers=self._get_password_header())
+        self._tags = []
+        for element in data:
+            tag = Tag(**element)
+            if self.get_password():
+                tag.set_password(self.get_password())
+            tag.file_id = self.id
+            self._tags.append(tag)
+
     def _fetch_moments(self):
         data = make_request("GET", f"files/{self.id}/moments", headers=self._get_password_header())
         self._moments = []
@@ -193,12 +205,14 @@ class File(Item):
                 subtitle.set_password(self.get_password())
             self._subtitles.append(subtitle)
 
+    def add_tag(self, timestamp):
+        raise NotImplemented()
+
     def create_moment(self, timestamp):
         raise NotImplemented()
-        # todo
-        data = {"timestamp": 73, "file_id": "9FbHJVrVSV2zF3BFE4Xxch", "size": 25397, "message_id": "1354806011386400962", "attachment_id": "1354806011499905086",
-                "message_author_id": "1344677807225311283"}
-        data = make_request("POST", f"files/moment/add", headers=self._get_password_header())
+
+    def create_subtitles(self, timestamp):
+        raise NotImplemented()
 
     def play(self):
         if self.type != "video":

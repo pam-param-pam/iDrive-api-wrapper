@@ -1,14 +1,15 @@
 import logging
 from typing import Union, List
 
-
 from .Config import APIConfig
+from .models.DiscordSettings import DiscordSettings
 from .models.File import File
 from .models.Folder import Folder
 from .models.Item import Item
 from .models.ItemsList import ItemsList
 from .models.Share import Share
 from .models.User import User
+from .models.UserProfile import UserProfile
 from .utils import common
 from .utils.UltraDownloader import UltraDownloader
 from .utils.Uploader import Uploader
@@ -81,40 +82,49 @@ class Client:
         folder._fetch_data()
         return folder
 
-    def set_download_path(self, path: str):
+    def set_download_path(self, path: str) -> None:
         APIConfig.default_path = path
 
-    def move_to_trash(self, items: List[Item]):
+    def move_to_trash(self, items: List[Item]) -> None:
         common.move_to_trash(items)
 
-    def restore_from_trash(self, items: List[Item]):
+    def restore_from_trash(self, items: List[Item]) -> None:
         common.restore_from_trash(items)
 
-    def delete(self, items: List[Item]):
+    def delete(self, items: List[Item]) -> None:
         common.delete(items)
 
-    def move(self, items: List[Item], new_parent: Folder):
+    def move(self, items: List[Item], new_parent: Folder) -> None:
         common.move(items, new_parent)
 
     def download(self, items: List[Item], callback=None) -> str:
         download_url = common.get_zip_download_url(items)
         return common.download_from_url(download_url)
 
-    def get_share(self, token):
+    def get_share(self, token) -> Share:
         return Share(token)
 
-    def get_shares(self):
-        pass
+    def get_shares(self) -> List[Share]:
+        data = make_request("GET", "shares")
+        shares = []
+        for share_dict in data:
+            share = Share(share_dict['token'])
+            share._set_data(share_dict)
+            shares.append(share)
+        return shares
 
-    def get_profile_settings(self):
-        pass
+    def create_share(self) -> Share:
+        data = make_request("GET", "shares")
 
-    def get_discord_settings(self):
-        pass
+    def get_user_profile(self) -> UserProfile:
+        return UserProfile.fetch()
 
-    def get_ultra_downloader(self):
+    def get_discord_settings(self) -> DiscordSettings:
+        return DiscordSettings.fetch()
+
+    def get_ultra_downloader(self, max_workers: int = 40) -> UltraDownloader:
         if not self._ultraDownloader:
             discord_settings = self.get_discord_settings()
-            self._ultraDownloader = UltraDownloader(max_workers=2*len(discord_settings.bots))
+            self._ultraDownloader = UltraDownloader(workers=min(2 * len(discord_settings.bots), max_workers))
 
         return self._ultraDownloader

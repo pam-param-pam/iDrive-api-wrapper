@@ -1,40 +1,60 @@
-from collections import namedtuple
 from typing import NamedTuple, Optional
 
-VisitsNamedTuple = namedtuple('ShareVisit', ['user', 'ip', 'user_agent', 'access_count', 'last_access_time'])
-
+class VisitsNamedTuple(NamedTuple):
+    user: str
+    ip: str
+    user_agent: str
+    access_count: int
+    last_access_time: str
 
 class VideoTrackTuple(NamedTuple):
-    bitrate: Optional[int] = None
-    codec: Optional[str] = None
-    size: Optional[int] = None
-    duration: Optional[int] = None
-    language: Optional[str] = None
-    number: Optional[int] = None
-    height: Optional[int] = None
-    width: Optional[int] = None
-    fps: Optional[int] = None
-    type: Optional[int] = None
+    bitrate: int
+    codec: str
+    size: int
+    duration: int
+    language: Optional[str]
+    number: int
+    height: int
+    width: int
+    fps: int
+    type: str
+
 
 class AudioTrackTuple(NamedTuple):
-    bitrate: Optional[int] = None
-    codec: Optional[str] = None
-    size: Optional[int] = None
-    duration: Optional[int] = None
-    language: Optional[str] = None
-    number: Optional[int] = None
-    name: Optional[str] = None
-    channel_count: Optional[int] = None
-    sample_rate: Optional[int] = None
-    sample_size: Optional[int] = None
-    type: Optional[int] = None
+    bitrate: int
+    codec: str
+    size: int
+    duration: int
+    language: Optional[str]
+    number: int
+    name: str
+    channel_count: int
+    sample_rate: int
+    sample_size: int
+    type: str
+
 
 class SubtitleTrackTuple(NamedTuple):
-    bitrate: Optional[int] = None
-    codec: Optional[str] = None
-    size: Optional[int] = None
-    duration: Optional[int] = None
-    language: Optional[str] = None
-    number: Optional[int] = None
-    name: Optional[str] = None
-    type: Optional[int] = None
+    bitrate: int
+    codec: str
+    size: int
+    duration: int
+    language: Optional[str]
+    number: int
+    type: str
+
+class User(NamedTuple):
+    name: str
+    root: str
+    maxDiscordMessageSize: int
+
+
+class Perms(NamedTuple):
+    admin: bool
+    execute: bool
+    create: bool
+    lock: bool
+    modify: bool
+    delete: bool
+    share: bool
+    download: bool

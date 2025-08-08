@@ -17,6 +17,8 @@ class ResourcePermissionError(IDriveException):
 class ResourceNotFoundError(IDriveException):
     """Raised when 404"""
 
+class BadMethodError(IDriveException):
+    """Raised when 405"""
 
 class RateLimitException(IDriveException):
     """Raised when 429"""
