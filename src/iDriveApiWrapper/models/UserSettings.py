@@ -1,6 +1,61 @@
-from src.iDriveApiWrapper.utils.networker import make_request
+from typing import Literal
 
-#todo
+from ..models.Enums import EncryptionMethod
+from ..utils.networker import make_request
+
+class SettingsBuilder:
+    def __init__(self, settings: "Settings"):
+        self._settings = settings
+        self._changes = {}
+
+    def language(self, language: Literal["pl", "en", "uwu"]) -> "SettingsBuilder":
+        self._changes["locale"] = language
+        return self
+
+    def hide_locked_folders(self, value: bool) -> "SettingsBuilder":
+        self._changes["hideLockedFolders"] = value
+        return self
+
+    def exact_date_format(self, value: bool) -> "SettingsBuilder":
+        self._changes["dateFormat"] = value
+        return self
+
+    def theme(self, theme: Literal["dark", "light"]) -> "SettingsBuilder":
+        self._changes["theme"] = theme
+        return self
+
+    def view_mode(self, mode: Literal["list", "height grid", "width grid"]) -> "SettingsBuilder":
+        self._changes["viewMode"] = mode
+        return self
+
+    def sorting_by(self, sort_by: Literal["name", "size", "created"]) -> "SettingsBuilder":
+        self._changes["sortingBy"] = sort_by
+        return self
+
+    def sort_by_asc(self, value: bool) -> "SettingsBuilder":
+        self._changes["sortByAsc"] = value
+        return self
+
+    def include_subfolders_in_shares(self, value: bool) -> "SettingsBuilder":
+        self._changes["subfoldersInShares"] = value
+        return self
+
+    def concurrent_requests(self, value: int) -> "SettingsBuilder":
+        self._changes["concurrentUploadRequests"] = value
+        return self
+
+    def encryption_method(self, method: "EncryptionMethod") -> "SettingsBuilder":
+        self._changes["encryptionMethod"] = method
+        return self
+
+    def keep_original_file_timestamp(self, value: bool) -> "SettingsBuilder":
+        self._changes["keepCreationTimestamp"] = value
+        return self
+
+    def save(self) -> None:
+        # Here you'd call your API
+        pass
+
 class Settings:
     def __init__(self, locale: str, hideLockedFolders: bool, dateFormat, theme: str,
                  viewMode: str, sortingBy: str, sortByAsc: bool, subfoldersInShares: bool,
@@ -18,28 +73,6 @@ class Settings:
         self.encryptionMethod = encryptionMethod
         self.keepCreationTimestamp = keepCreationTimestamp
 
-    _field_map = {
-        "locale": "locale",
-        "hide_locked_folders": "hideLockedFolders",
-        "date_format": "dateFormat",
-        "theme": "theme",
-        "view_mode": "viewMode",
-        "sorting_by": "sortingBy",
-        "sort_by_asc": "sortByAsc",
-        "subfolders_in_shares": "subfoldersInShares",
-        "concurrent_upload_requests": "concurrentUploadRequests",
-        "encryption_method": "encryptionMethod",
-        "keep_creation_timestamp": "keepCreationTimestamp",
-    }
-
-    def to_api_dict(self):
-        # Return dict with camelCase keys for API saving
-        return {api_key: getattr(self, snake_attr) for snake_attr, api_key in self._field_map.items()}
-
-    def save(self):
-        data_to_save = self.to_api_dict()
-        data = make_request("PATCH", "user/settings")
-        # todo
-
-
+    def builder(self) -> SettingsBuilder:
+        return SettingsBuilder(self)
 

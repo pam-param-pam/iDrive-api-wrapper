@@ -120,7 +120,7 @@ class Item(Resource, ABC):
         make_request("GET", f"items/{self.id}/password", headers={"x-resource-password": password})
 
     def rename(self, new_name: str) -> None:
-        make_request("PATCH", f"item/rename", {'id': self.id, 'new_name': new_name}, headers=self._get_password_header())
+        make_request("PATCH", f"items/{self.id}/rename", {'new_name': new_name}, headers=self._get_password_header())
 
     def move_to_trash(self) -> None:
         from ..utils.common import move_to_trash

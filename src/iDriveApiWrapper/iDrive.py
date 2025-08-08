@@ -8,11 +8,11 @@ from .models.Folder import Folder
 from .models.Item import Item
 from .models.ItemsList import ItemsList
 from .models.Share import Share
-from .models.User import User
 from .models.UserProfile import UserProfile
 from .utils import common
 from .utils.UltraDownloader import UltraDownloader
 from .utils.Uploader import Uploader
+from .utils.WebsocketManager import WebsocketManager
 from .utils.networker import make_request
 
 # Create a custom logger
@@ -36,16 +36,10 @@ class Client:
         # self.auth = AuthManager(token)
         # self.token = self.auth.get_access_token()
         self._token = token
-        self._user: Union[User, None] = None
         APIConfig.token = token
         self._ultraDownloader = None
         self.uploader = Uploader()
-
-    @property
-    def user(self):
-        if not self._user:
-            self._fetch_user()
-        return self._user
+        self.websocket = WebsocketManager(self._token)
 
     @staticmethod
     def login(username: str, password: str) -> str:
@@ -53,13 +47,11 @@ class Client:
         data = make_request("POST", "auth/token/login", data={'username': username, 'password': password})
         return data['auth_token']
 
-    def _fetch_user(self) -> None:
-        data = make_request("GET", "user/me")
-        self._user = User(data)
-        APIConfig.user = self._user
+    def logout(self):
+        pass
 
     def get_root(self):
-        return Folder(self.user.root_id)
+        return Folder(self.get_user_profile().user.root)
 
     def search(self, query: str, files: bool = True, folders: bool = True, type: str = "", extension: str = "", max_results: int = 50) -> ItemsList:
         data = make_request("GET", "search", params={"query": query, "files": files, "folder": folders, "type": type, "extension": extension, "resultsLimit": max_results})
@@ -122,9 +114,12 @@ class Client:
     def get_discord_settings(self) -> DiscordSettings:
         return DiscordSettings.fetch()
 
-    def get_ultra_downloader(self, max_workers: int = 40) -> UltraDownloader:
+    def get_ultra_downloader(self, max_workers: int = 60) -> UltraDownloader:
         if not self._ultraDownloader:
             discord_settings = self.get_discord_settings()
-            self._ultraDownloader = UltraDownloader(workers=min(2 * len(discord_settings.bots), max_workers))
+            self._ultraDownloader = UltraDownloader(workers=min(3 * len(discord_settings.bots), max_workers))
 
         return self._ultraDownloader
+
+    def set_debug_level(self, level):
+        logger.setLevel(level)
