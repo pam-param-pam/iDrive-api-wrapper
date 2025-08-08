@@ -43,11 +43,11 @@ This process introduces delays and limits the overall download speed.
 
 Here's the benchmark, tested in **1Gbps** Internet speed:    
 
-| Web interface                       | Achievable Speed | Notes                                                                                                     |
-|-------------------------------------|------------------|-----------------------------------------------------------------------------------------------------------|
-| Download (discord messages cached)  | up to 50Mb/s     | With discord messages cached, theres no need to ask discord for attachment_url every time                 |
-| Download (No cache)                 | 5-15Mb/s         | Having to ask discord for attachment_url + doing things not in parallel significantly slows things down   |
-| Upload                              | up to 30Mb/s     | Im not quite sure what slows it down. Theoretically it should allow for faster upload. Perhaps its my ISP |
+| Web interface                       | Achievable Speed | Notes                                                                                                                                |
+|-------------------------------------|------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Download (discord messages cached)  | up to 50Mb/s     | Theres no need to ask discord for attachment_url every time and i think cloudflare caches the attachment data thus speeding download |
+| Download (No cache)                 | 5-15Mb/s         | Having to ask discord for attachment_url + doing things not in parallel significantly slows things down                              |
+| Upload                              | up to 30Mb/s     | Im not quite sure what slows it down. Theoretically it should allow for faster upload. Perhaps its my ISP                            |
 
 
 
@@ -65,6 +65,6 @@ Here's the benchmark, tested in **1Gbps** Internet speed:
 - Tweak the `max_workers` setting based on your internet speed.
 
 ```python
-file = client.get_file("LE8tUWusDAWzejZrKeVwc5", "1")
+file = client.get_file("file_id", "1")
 client.get_ultra_downloader(max_workers=20).download(file) # default 40, ideal for 20 bots && 1Gbps Internet speed 
 ```
