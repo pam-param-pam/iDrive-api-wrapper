@@ -2,6 +2,7 @@ import logging
 from typing import Union, List
 
 from .Config import APIConfig
+from .exceptions import UnauthorizedError
 from .models.DiscordSettings import DiscordSettings
 from .models.File import File
 from .models.Folder import Folder
@@ -10,6 +11,7 @@ from .models.ItemsList import ItemsList
 from .models.Share import Share
 from .models.UserProfile import UserProfile
 from .utils import common
+from .utils.AuthClient import AuthClient
 from .utils.UltraDownloader import UltraDownloader
 from .utils.Uploader import Uploader
 from .utils.WebsocketManager import WebsocketManager
@@ -32,20 +34,24 @@ logger.addHandler(console_handler)
 
 
 class Client:
-    def __init__(self, token: str):
-        # self.auth = AuthManager(token)
-        # self.token = self.auth.get_access_token()
-        self._token = token
+    def __init__(self, token: str, device_id: str):
         APIConfig.token = token
+        APIConfig.device_id = device_id
         self._ultraDownloader = None
         self.uploader = Uploader()
-        self.websocket = WebsocketManager(self._token)
+        self.websocket = WebsocketManager()
 
-    @staticmethod
-    def login(username: str, password: str) -> str:
-        # todo leaking token if already logged in + another login
-        data = make_request("POST", "auth/token/login", data={'username': username, 'password': password})
-        return data['auth_token']
+    @classmethod
+    def login(cls, username: str, password: str, force_login: bool = False) -> "Client":
+        token, device_id = AuthClient.login(username, password, force_login)
+
+        try:
+            make_request("GET", "user/me")
+        except UnauthorizedError:
+            APIConfig.token = None
+            token, device_id = AuthClient.login(username, password, force_login=True)
+
+        return cls(token=token, device_id=device_id)
 
     def logout(self):
         pass

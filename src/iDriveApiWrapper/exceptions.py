@@ -17,8 +17,10 @@ class ResourcePermissionError(IDriveException):
 class ResourceNotFoundError(IDriveException):
     """Raised when 404"""
 
+
 class BadMethodError(IDriveException):
     """Raised when 405"""
+
 
 class RateLimitException(IDriveException):
     """Raised when 429"""
@@ -27,8 +29,14 @@ class RateLimitException(IDriveException):
 class MissingOrIncorrectResourcePasswordError(IDriveException):
     """Raised when 469"""
 
+
 class InternalServerError(IDriveException):
     """Raised when 500"""
 
+
 class ServiceUnavailable(IDriveException):
     """Raised when 503"""
+
+
+class ForcedLogoutException(IDriveException):
+    """Raised when your session is invalidated, and you're forced to re login"""

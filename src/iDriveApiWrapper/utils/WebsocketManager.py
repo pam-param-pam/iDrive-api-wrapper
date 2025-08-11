@@ -8,15 +8,17 @@ from typing import Callable, List, Any
 
 from websockets import WebSocketException
 
+from ..Config import APIConfig
 from ..Constants import BASE_WSS
+from ..exceptions import ForcedLogoutException
+from ..models.Enums import EventType
 from ..models.WebsocketEvent import WebsocketEvent
 
 logger = logging.getLogger("iDrive")
 
 
 class WebsocketManager:
-    def __init__(self, token: str):
-        self._token = token
+    def __init__(self):
         self._ws_thread = None
         self._stop_ws = threading.Event()
         self._callbacks: List[Callable[[Any], None]] = []
@@ -24,7 +26,7 @@ class WebsocketManager:
     async def _listen_websocket(self) -> None:
         while not self._stop_ws.is_set():
             try:
-                async with websockets.connect(BASE_WSS, additional_headers={"Authorization": f"Bearer {self._token}"}) as ws:
+                async with websockets.connect(BASE_WSS, additional_headers={"Authorization": f"Bearer {APIConfig.token}"}) as ws:
                     logger.info("Websocket connection established!")
                     async for message in ws:
                         self._handle_ws_event(json.loads(message))
@@ -36,7 +38,6 @@ class WebsocketManager:
         self._callbacks.append(callback)
 
     def _dispatch_event(self, event: WebsocketEvent) -> None:
-
         def run_callback(cb):
             def wrapper():
                 cb(event)
@@ -46,10 +47,15 @@ class WebsocketManager:
         for callback in self._callbacks:
             run_callback(callback)
 
+    def _handle_force_logout(self, event: WebsocketEvent):
+        if not event.is_encrypted and event.type == EventType.FORCE_LOGOUT:
+            self.stop_websocket()
+            raise ForcedLogoutException("Forced logout, please re login.")
+
     def _handle_ws_event(self, data: dict) -> None:
         try:
             event = WebsocketEvent(data)
-            # todo handle force logout
+            self._handle_force_logout(event)
             self._dispatch_event(event)
         except Exception as e:
             logger.exception(f" Error happened during handling of a websocket event\nError: {e}")

@@ -58,3 +58,15 @@ class Perms(NamedTuple):
     delete: bool
     share: bool
     download: bool
+
+class Device(NamedTuple):
+    device_name: str
+    device_id: str
+    created_at: str
+    last_used_at: str
+    expires_at: str
+    ip_address: str
+    user_agent: str
+    country: Optional[str]
+    city: Optional[str]
+    device_type: str

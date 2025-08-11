@@ -1,4 +1,4 @@
-from .namedTuples import User, Perms
+from .namedTuples import User, Perms, Device
 from ..models.UserSettings import Settings
 from ..utils.networker import make_request
 
@@ -18,6 +18,13 @@ class UserProfile:
             perms=data["perms"],
             settings=data["settings"]
         )
+
+    def get_active_devices(self) -> list[Device]:
+        data = make_request("GET", "user/devices")
+        devices = []
+        for element in data:
+            devices.append(Device(**element))
+        return devices
 
     def __str__(self):
         return f"UserProfile({self.user.name})"
