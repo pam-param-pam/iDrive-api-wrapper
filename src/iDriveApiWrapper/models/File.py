@@ -227,7 +227,7 @@ class File(Item):
     @overrides
     def download(self, folder_path="", callback=None) -> str:
         from ..utils.common import download_from_url
-        return download_from_url(self.download_url, folder_path)
+        return download_from_url(self.download_url + "?download=true", folder_path)
 
     @overrides
     def _set_data(self, json_data: dict) -> None:

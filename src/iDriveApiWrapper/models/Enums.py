@@ -8,6 +8,7 @@ class EncryptionMethod(Enum):
 
 
 class EventType(Enum):
+    WEBSOCKET_ERROR = 0
     ITEM_CREATE = 1
     ITEM_DELETE = 2
     ITEM_UPDATE = 3
@@ -20,4 +21,8 @@ class EventType(Enum):
     FOLDER_LOCK_STATUS_CHANGE = 10
     FORCE_LOGOUT = 11
     NEW_DEVICE_LOG_IN = 12
+    DEVICE_CONTROL_REQUEST = 13
+    DEVICE_CONTROL_REPLY = 14
+    DEVICE_CONTROL_COMMAND = 15
+    DEVICE_CONTROL_STATUS = 16
 

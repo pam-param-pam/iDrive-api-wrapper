@@ -15,8 +15,8 @@ class AuthClient:
                     data = json.load(f)
                     return data.get("auth_token"), data.get("device_id")
             except Exception:
-                return None
-        return None
+                return None, None
+        return None, None
 
     @staticmethod
     def _save_auth(token: str, device_id: str):

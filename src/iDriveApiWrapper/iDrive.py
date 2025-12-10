@@ -2,7 +2,8 @@ import logging
 from typing import Union, List
 
 from .Config import APIConfig
-from .exceptions import UnauthorizedError
+from .downloader.UltraDownloader import UltraDownloader
+from .exceptions import UnauthorizedError, ResourceNotFoundError
 from .models.DiscordSettings import DiscordSettings
 from .models.File import File
 from .models.Folder import Folder
@@ -12,7 +13,6 @@ from .models.Share import Share
 from .models.UserProfile import UserProfile
 from .utils import common
 from .utils.AuthClient import AuthClient
-from .utils.UltraDownloader import UltraDownloader
 from .utils.Uploader import Uploader
 from .utils.WebsocketManager import WebsocketManager
 from .utils.networker import make_request
@@ -44,10 +44,11 @@ class Client:
     @classmethod
     def login(cls, username: str, password: str, force_login: bool = False) -> "Client":
         token, device_id = AuthClient.login(username, password, force_login)
-
         try:
+            APIConfig.token = token
             make_request("GET", "user/me")
-        except UnauthorizedError:
+        except UnauthorizedError as e:
+            logger.info("Cached auth_token is invalid. Attempting to log you in")
             APIConfig.token = None
             token, device_id = AuthClient.login(username, password, force_login=True)
 
@@ -68,16 +69,22 @@ class Client:
         data = data['trash']
         return Folder._parse_children(None, data)
 
-    def get_file(self, file_id, password=None) -> File:
+    def get_file(self, file_id: str, password: str = None, check: bool = True) -> File:
         file = File(file_id)
         file.set_password(password)
-        file._fetch_data()
+        if not password:
+            file._is_locked = False
+        if check:
+            file._fetch_data()
         return file
 
-    def get_folder(self, folder_id, password=None) -> Folder:
+    def get_folder(self, folder_id: str, password: str = None, check: bool = True) -> Folder:
         folder = Folder(folder_id)
         folder.set_password(password)
-        folder._fetch_data()
+        if not password:
+            folder._is_locked = False
+        if check:
+            folder._fetch_data()
         return folder
 
     def set_download_path(self, path: str) -> None:
@@ -120,12 +127,23 @@ class Client:
     def get_discord_settings(self) -> DiscordSettings:
         return DiscordSettings.fetch()
 
-    def get_ultra_downloader(self, max_workers: int = 60) -> UltraDownloader:
+    def get_ultra_downloader(self) -> UltraDownloader:
         if not self._ultraDownloader:
             discord_settings = self.get_discord_settings()
-            self._ultraDownloader = UltraDownloader(workers=min(3 * len(discord_settings.bots), max_workers))
+            self._ultraDownloader = UltraDownloader()
 
         return self._ultraDownloader
 
     def set_debug_level(self, level):
         logger.setLevel(level)
+
+    def get_token(self) -> str:
+        return APIConfig.token
+
+    def check_attachment(self, attachment_id: str) -> bool:
+        try:
+            make_request("GET", f"cleanup/{attachment_id}")
+            return True
+        except ResourceNotFoundError:
+            return False
+

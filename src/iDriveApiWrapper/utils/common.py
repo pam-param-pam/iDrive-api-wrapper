@@ -30,7 +30,7 @@ def move_to_trash(items: List[Item]) -> None:
 
 def delete(items: List[Item]) -> None:
     data = _extract_ids_and_passwords(items)
-    make_request("PATCH", f"items/delete", data)
+    make_request("POST", f"items/delete", data)
 
 
 def restore_from_trash(items: List[Item]) -> None:

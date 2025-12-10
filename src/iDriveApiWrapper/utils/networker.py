@@ -7,14 +7,17 @@ import httpx as httpx
 
 from ..Config import APIConfig
 from ..Constants import BASE_URL
-from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitException, UnauthorizedError, \
-    ServiceUnavailable, InternalServerError, BadMethodError
+from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitError, UnauthorizedError, \
+    ServiceUnavailableError, InternalServerError, BadMethodError
 
 logger = logging.getLogger("iDrive")
 
 httpxClient = httpx.Client(timeout=20.0)
 DEFAULT_RETRY_AFTER = 5
 
+
+def _mask_preserving_spaces(value: str) -> str:
+    return "".join("*" if ch != " " else " " for ch in value)
 
 def _get_headers() -> dict:
     headers = {"Content-Type": "application/json"}
@@ -23,54 +26,53 @@ def _get_headers() -> dict:
     return headers
 
 
-def make_request(method: str, endpoint: str, data: dict = None, headers: dict = None, params: dict = None, files: dict = None) -> dict:
-    if headers is None:
-        headers = {}
-
-    logger.debug(f"Calling... Endpoint={endpoint}, Method={method}, Headers={headers}")
-    url = f"{BASE_URL}/{endpoint}"
+def make_request(method: str, endpoint: str, data: dict = None, headers: dict = None, params: dict = None, files: dict = None, retry=True) -> dict:
+    headers = {k: v for k, v in (headers or {}).items() if v is not None}
     headers.update(_get_headers())
 
-    response = httpxClient.request(method, url, headers=headers,  json=data, params=params, files=files)
+    SENSITIVE_HEADERS = {"authorization"}
+    safe_headers = {
+        key: (_mask_preserving_spaces(value) if key.lower() in SENSITIVE_HEADERS else value)
+        for key, value in headers.items()
+    }
+    url = f"{BASE_URL}/{endpoint}"
+    logger.debug(f"Calling... Endpoint={endpoint}, Method={method}, Headers={safe_headers}")
+
+    response = httpxClient.request(method, url, headers=headers, json=data, params=params, files=files)
+
+    if response.status_code == 429 and retry:
+        retry_after = response.headers.get("Retry-After")
+        wait_time = int(retry_after) if retry_after and retry_after.isdigit() else DEFAULT_RETRY_AFTER
+        logger.warning(f"Rate limited (429). Retrying after {wait_time} seconds...")
+        time.sleep(wait_time)
+        return make_request(method, url, headers, data, params, files, retry=False)
+
     if not response.is_success:
-        try:
-            error_message = json.loads(response.content)
-        except JSONDecodeError:
-            error_message = response.content
-        if response.status_code == 400:
-            raise BadRequestError(error_message)
-        elif response.status_code == 401:
-            raise UnauthorizedError(error_message)
-        elif response.status_code == 403:
-            raise ResourcePermissionError(error_message)
-        elif response.status_code == 404:
-            raise ResourceNotFoundError(error_message)
-        elif response.status_code == 405:
-            raise BadMethodError(f"Expected method: {response.headers.get('Allow')}. Instead of: {method}")
-        elif response.status_code == 500:
-            raise InternalServerError(error_message)
-        elif response.status_code == 503:
-            raise ServiceUnavailable(error_message)
+        _raise_for_status(response)
 
-        elif response.status_code == 429:
-            retry_after = response.headers.get("Retry-After")
-            wait_time = int(retry_after) if retry_after and retry_after.isdigit() else DEFAULT_RETRY_AFTER
-            logger.warning(f"Rate limited (429). Retrying after {wait_time} seconds...")
-            time.sleep(wait_time)
+    return response.json()
 
-            # Retry once
-            response = httpxClient.request(method, url, headers=headers, json=data, params=params, files=files)
+def _raise_for_status(response):
+    status = response.status_code
 
-            if not response.is_success:
-                try:
-                    error = json.loads(response.content)
-                except JSONDecodeError:
-                    error = response.content
-                raise RateLimitException(error)
-        elif response.status_code == 469:
-            raise MissingOrIncorrectResourcePasswordError(error_message)
-        else:
-            raise IDriveException(f"Status code: {response.status_code}, content={response.content}")
+    if status == 400:
+        raise BadRequestError(response)
+    elif status == 401:
+        raise UnauthorizedError(response)
+    elif status == 403:
+        raise ResourcePermissionError(response)
+    elif status == 404:
+        raise ResourceNotFoundError(response)
+    elif status == 405:
+        raise BadMethodError(response)
+    elif status == 500:
+        raise InternalServerError(response)
+    elif status == 503:
+        raise ServiceUnavailableError(response)
+    elif status == 469:
+        raise MissingOrIncorrectResourcePasswordError(response)
+    elif status == 429:
+        raise RateLimitError(response)
 
-    if response.status_code == 200:
-        return response.json()
+    # fallback
+    raise IDriveException(response)

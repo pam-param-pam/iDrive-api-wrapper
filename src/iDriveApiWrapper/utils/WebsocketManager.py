@@ -2,15 +2,13 @@ import asyncio
 import json
 import logging
 import threading
+from typing import Callable, List, Union
 
 import websockets
-from typing import Callable, List, Any
-
 from websockets import WebSocketException
 
 from ..Config import APIConfig
 from ..Constants import BASE_WSS
-from ..exceptions import ForcedLogoutException
 from ..models.Enums import EventType
 from ..models.WebsocketEvent import WebsocketEvent
 
@@ -21,62 +19,141 @@ class WebsocketManager:
     def __init__(self):
         self._ws_thread = None
         self._stop_ws = threading.Event()
-        self._callbacks: List[Callable[[Any], None]] = []
+        self._connected = threading.Event()
 
-    async def _listen_websocket(self) -> None:
-        while not self._stop_ws.is_set():
-            try:
-                async with websockets.connect(BASE_WSS, additional_headers={"Authorization": f"Bearer {APIConfig.token}"}) as ws:
-                    logger.info("Websocket connection established!")
-                    async for message in ws:
-                        self._handle_ws_event(json.loads(message))
-            except WebSocketException as e:
-                logger.warning(f"⚠️ WebSocket error: {e}. Reconnecting in 5s...")
-                await asyncio.sleep(5)
+        self._callbacks: List[Callable[[WebsocketEvent], None]] = []
+        self._loop: Union[asyncio.AbstractEventLoop, None] = None
+        self._ws = None
 
-    def register_callback(self, callback: Callable[[dict], None]) -> None:
-        self._callbacks.append(callback)
+        self._forced_logout = False
 
-    def _dispatch_event(self, event: WebsocketEvent) -> None:
-        def run_callback(cb):
-            def wrapper():
-                cb(event)
-            thread = threading.Thread(target=wrapper, daemon=True)
-            thread.start()
-
-        for callback in self._callbacks:
-            run_callback(callback)
-
-    def _handle_force_logout(self, event: WebsocketEvent):
-        if not event.is_encrypted and event.type == EventType.FORCE_LOGOUT:
-            self.stop_websocket()
-            raise ForcedLogoutException("Forced logout, please re login.")
-
-    def _handle_ws_event(self, data: dict) -> None:
-        try:
-            event = WebsocketEvent(data)
-            self._handle_force_logout(event)
-            self._dispatch_event(event)
-        except Exception as e:
-            logger.exception(f" Error happened during handling of a websocket event\nError: {e}")
-
-    def _run_ws_loop(self) -> None:
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._listen_websocket())
-
-    def start_websocket(self) -> None:
+    def start_websocket(self):
         if self.is_running():
             return
+
         self._stop_ws.clear()
+        self._forced_logout = False
+
         self._ws_thread = threading.Thread(target=self._run_ws_loop, daemon=True)
         self._ws_thread.start()
 
-    def run_forever(self):
-        self._ws_thread.join()
-
-    def stop_websocket(self) -> None:
+    def stop_websocket(self):
         self._stop_ws.set()
 
+        if self._ws and self._loop:
+            async def _close():
+                try:
+                    await self._ws.close()
+                except Exception:
+                    pass
+
+            asyncio.run_coroutine_threadsafe(_close(), self._loop)
+
+    def wait_until_connected(self, timeout: float = 5.0) -> bool:
+        if not self.is_running():
+            raise RuntimeError("WebSocket thread is not running.")
+        return self._connected.wait(timeout=timeout)
+
+    def run_forever(self):
+        if self._ws_thread is None:
+            raise RuntimeError("WebSocket thread not started. Call start_websocket() first.")
+
+        self._ws_thread.join()
+
     def is_running(self) -> bool:
-        return self._ws_thread and self._ws_thread.is_alive()
+        return self._ws_thread is not None and self._ws_thread.is_alive()
+
+    def register_callback(self, callback: Callable[[WebsocketEvent], None]):
+        self._callbacks.append(callback)
+
+    def send_json(self, message: dict):
+        return self.send_message(json.dumps(message))
+
+    def send_message(self, message: str):
+        if not self._connected.is_set() or not self._ws:
+            raise RuntimeError("WebSocket is not connected yet.")
+
+        async def _send():
+            await self._ws.send(message)
+
+        asyncio.run_coroutine_threadsafe(_send(), self._loop)
+
+    def _run_ws_loop(self):
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+
+        try:
+            self._loop.run_until_complete(self._listen_websocket())
+        finally:
+            # Close remaining tasks gracefully
+            pending = asyncio.all_tasks(loop=self._loop)
+            for task in pending:
+                task.cancel()
+
+            try:
+                self._loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            except Exception:
+                pass
+
+            self._loop.close()
+            logger.info("Websocket event loop closed cleanly.")
+
+    async def _listen_websocket(self):
+        while not self._stop_ws.is_set():
+            try:
+                async with websockets.connect(
+                    BASE_WSS,
+                    additional_headers={"Authorization": f"Bearer {APIConfig.token}"}
+                ) as ws:
+
+                    self._ws = ws
+                    self._connected.set()
+                    logger.info("Websocket connection established!")
+
+                    async for raw in ws:
+                        if self._stop_ws.is_set():
+                            break
+                        self._handle_ws_event(json.loads(raw))
+
+            except WebSocketException as e:
+                if self._stop_ws.is_set():
+                    break
+                logger.warning(f"⚠️ WebSocket error: {e}. Reconnecting in 5s...")
+                await asyncio.sleep(5)
+
+            finally:
+                self._ws = None
+                self._connected.clear()
+
+                if self._forced_logout:
+                    logger.info("Stopping websocket due to forced logout.")
+                    break
+
+        logger.info("Websocket listener stopped cleanly.")
+
+    def _handle_ws_event(self, data: dict):
+        try:
+            event = WebsocketEvent(data)
+            logger.info(f"Received WebSocket event: {event}")
+
+            # Check forced logout first
+            if not event.is_encrypted and event.type == EventType.FORCE_LOGOUT:
+                logger.warning("⚠️ Forced logout — shutting down gracefully.")
+                self._forced_logout = True
+                self.stop_websocket()
+                return  # DO NOT raise inside the listener thread
+
+            # Dispatch event to user callbacks
+            self._dispatch_event(event)
+
+        except Exception as e:
+            logger.exception(f"Error during handling of websocket event: {e}")
+
+    def _dispatch_event(self, event: WebsocketEvent):
+        for cb in self._callbacks:
+            threading.Thread(
+                target=lambda: cb(event),
+                daemon=True
+            ).start()

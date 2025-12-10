@@ -10,17 +10,17 @@ from src.iDriveApiWrapper.models.Enums import EventType
 
 
 class WebsocketEvent:
-    def __init__(self, data):
+    def __init__(self, data: dict):
         self.is_encrypted: bool = data['is_encrypted']
         self.folder_context_id: str = data.get('folder_context_id')
         self.lock_from: str = data.get('lockFrom')
         self.op_code: Optional[int] = None
         self.type: Optional[EventType] = None
-        self.data: Optional[dict] = None
+        self.data: Optional[list[dict]] = None
         self._raw_data: dict = data
         self._is_decrypted: bool = False
         if not self.is_encrypted:
-            self._set_data(data['event'])
+            self._set_data(data.get('event', {}))
 
     def __str__(self):
         if self.is_encrypted and not self._is_decrypted:
