@@ -8,7 +8,7 @@ import httpx as httpx
 from ..Config import APIConfig
 from ..Constants import BASE_URL
 from ..exceptions import BadRequestError, ResourcePermissionError, ResourceNotFoundError, MissingOrIncorrectResourcePasswordError, IDriveException, RateLimitError, UnauthorizedError, \
-    ServiceUnavailableError, InternalServerError, BadMethodError
+    ServiceUnavailableError, InternalServerError, BadMethodError, ServerTimeoutError, NetworkError
 
 logger = logging.getLogger("iDrive")
 
@@ -38,7 +38,21 @@ def make_request(method: str, endpoint: str, data: dict = None, headers: dict = 
     url = f"{BASE_URL}/{endpoint}"
     logger.debug(f"Calling... Endpoint={endpoint}, Method={method}, Headers={safe_headers}")
 
-    response = httpxClient.request(method, url, headers=headers, json=data, params=params, files=files)
+    try:
+        response = httpxClient.request(method, url, headers=headers, json=data, params=params, files=files, timeout=5)
+    except httpx.TimeoutException as e:
+        logger.warning(f"Request timeout: {method} {endpoint}")
+        if retry:
+            time.sleep(DEFAULT_RETRY_AFTER)
+            return make_request(method, endpoint, data, headers, params, files, retry=False)
+        raise ServerTimeoutError("Request timed out") from e
+
+    except httpx.RequestError as e:
+        logger.error(f"Server not responding: {method} {endpoint} ({e})")
+        if retry:
+            time.sleep(DEFAULT_RETRY_AFTER)
+            return make_request(method, endpoint, data, headers, params, files, retry=False)
+        raise NetworkError("Server not responding") from e
 
     if response.status_code == 429 and retry:
         retry_after = response.headers.get("Retry-After")

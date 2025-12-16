@@ -34,10 +34,6 @@ class Item(Resource, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def download(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _set_more_data(self, data: dict):
         raise NotImplementedError
 

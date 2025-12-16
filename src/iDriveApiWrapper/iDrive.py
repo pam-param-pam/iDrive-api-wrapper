@@ -11,9 +11,9 @@ from .models.Item import Item
 from .models.ItemsList import ItemsList
 from .models.Share import Share
 from .models.UserProfile import UserProfile
+from .uploader.UltraUploader import UltraUploader
 from .utils import common
 from .utils.AuthClient import AuthClient
-from .utils.Uploader import Uploader
 from .utils.WebsocketManager import WebsocketManager
 from .utils.networker import make_request
 
@@ -38,7 +38,7 @@ class Client:
         APIConfig.token = token
         APIConfig.device_id = device_id
         self._ultraDownloader = None
-        self.uploader = Uploader()
+        self._ultra_uploader = None
         self.websocket = WebsocketManager()
 
     @classmethod
@@ -127,12 +127,23 @@ class Client:
     def get_discord_settings(self) -> DiscordSettings:
         return DiscordSettings.fetch()
 
-    def get_ultra_downloader(self) -> UltraDownloader:
+    def get_downloader(self) -> UltraDownloader:
         if not self._ultraDownloader:
             discord_settings = self.get_discord_settings()
-            self._ultraDownloader = UltraDownloader()
+            self._ultraDownloader = UltraDownloader(max_workers=len(discord_settings.bots)*2)
 
         return self._ultraDownloader
+
+    def get_uploader(self) -> UltraUploader:
+        if not self._ultra_uploader:
+            user_settings = self.get_user_profile()
+            self._ultra_uploader = UltraUploader(
+                max_message_size=user_settings.user.maxDiscordMessageSize,
+                max_attachments=user_settings.user.maxAttachmentsPerMessage,
+                encryption_method=user_settings.settings.encryptionMethod
+            )
+
+        return self._ultra_uploader
 
     def set_debug_level(self, level):
         logger.setLevel(level)

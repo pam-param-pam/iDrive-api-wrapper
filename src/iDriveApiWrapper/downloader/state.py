@@ -1,8 +1,10 @@
-# downloader/state.py
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Optional, List, Union
+from enum import Enum
+from typing import Optional, List, Union, Callable
+
+from src.iDriveApiWrapper.models.Enums import EncryptionMethod
 
 
 @dataclass
@@ -18,7 +20,7 @@ class FragmentInfo:
 class FileInfo:
     id: str
     name: str
-    encryption_method: int
+    encryption_method: EncryptionMethod
     size: int
     crc: int
     password: Optional[str]
@@ -37,14 +39,14 @@ class FileInfo:
     __repr__ = __str__
 
     @staticmethod
-    def convert(data: Union[list, dict]) -> List['FileInfo']:
+    def convert(data: Union[list, dict]) -> List["FileInfo"]:
         result = []
         for item in data:
             fragments = [FragmentInfo(**frag) for frag in item["fragments"]]
             file_obj = FileInfo(
                 id=item["id"],
                 name=item["name"],
-                encryption_method=item["encryption_method"],
+                encryption_method=EncryptionMethod(item["encryption_method"]),
                 crc=item["crc"],
                 size=item["size"],
                 key=item.get("key"),
@@ -65,19 +67,46 @@ class FragmentTask:
     retries: int = 0
 
 
+class FileStatus(Enum):
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    PAUSED = "paused"
+    RETRYING_NETWORK = "retrying_network"
+    RETRYING_SERVER = "retrying_server"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    QUEUED = "queued"
+
+
 @dataclass
 class FileState:
     fragments_total: int
     fragments_downloaded: int = 0
+    size_total: int = 0
+    bytes_downloaded: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock)
     error: Optional[Exception] = None
+    status: FileStatus = FileStatus.QUEUED
+    pause_event: threading.Event = field(default_factory=threading.Event)
+    cancelled: bool = False
+
+    def __post_init__(self):
+        # By default files are not paused
+        self.pause_event.set()
+
+
+onCompleteCallback = Optional[Callable[[str, FileState], None]]
+
 
 @dataclass
 class FileRecord:
     file_info: FileInfo
     file_dir: str
     merged_path: str
+    output_dir: str
     output_path: str
+    on_complete: onCompleteCallback
 
 
 class ThrottleState:
@@ -85,43 +114,23 @@ class ThrottleState:
         self.lock = threading.Lock()
         self.window = window  # lookback window (seconds)
 
-        # soft retryable errors (e.g. connection reset, timeouts, etc.)
-        self._retry_events = []       # [timestamp]
-
         # hard throttling (429, 503, etc.)
-        self._hard_events = []        # [timestamp]
+        self._hard_events = []  # [timestamp]
 
         # download throughput
-        self._byte_events = []        # [(timestamp, bytes)]
-
-    # ---------------------------
-    # soft retries
-    # ---------------------------
-
-    def signal_retry(self) -> None:
-        now = time.time()
-        with self.lock:
-            self._retry_events.append(now)
-            self._prune_times(self._retry_events, now)
-
-    def retry_rate(self) -> int:
-        """How many soft retry events in last window."""
-        now = time.time()
-        with self.lock:
-            self._prune_times(self._retry_events, now)
-            return len(self._retry_events)
+        self._byte_events = []  # [(timestamp, bytes)]
 
     # ---------------------------
     # hard errors (429 / 503)
     # ---------------------------
 
-    def signal_hard_error(self) -> None:
+    def signal_error(self) -> None:
         now = time.time()
         with self.lock:
             self._hard_events.append(now)
             self._prune_times(self._hard_events, now)
 
-    def hard_error_rate(self) -> int:
+    def error_rate(self) -> int:
         """How many hard throttling events in last window."""
         now = time.time()
         with self.lock:
@@ -162,7 +171,6 @@ class ThrottleState:
 
     def _prune_times(self, arr, now: float) -> None:
         cutoff = now - self.window
-        # drop from the front while older than cutoff
         i = 0
         for t in arr:
             if t >= cutoff:

@@ -2,13 +2,12 @@ import os
 import base64
 import zlib
 
+from .Decryptor import Decryptor
 from .state import FileRecord, FileInfo
 from ..models.Enums import EncryptionMethod
-from ..utils.Decryptor import Decryptor
 
 
 class FileFinalizer:
-
     def finalize(self, record: FileRecord):
         file_info = record.file_info
         file_dir = record.file_dir
@@ -33,24 +32,23 @@ class FileFinalizer:
                 with open(path, "rb") as p:
                     out.write(p.read())
 
-    def _decrypt(self, info: FileInfo, inp, outp):
-        method = EncryptionMethod(info.encryption_method)
-        if method == EncryptionMethod.Not_Encrypted:
-            os.rename(inp, outp)
+    def _decrypt(self, info: FileInfo, input, output):
+        if info.encryption_method == EncryptionMethod.Not_Encrypted:
+            os.rename(input, output)
             return
 
         key = base64.b64decode(info.key)
         iv = base64.b64decode(info.iv)
-        dec = Decryptor(method, key, iv)
+        dec = Decryptor(info.encryption_method, key, iv)
 
-        with open(inp, "rb") as i, open(outp, "wb") as o:
+        with open(input, "rb") as i, open(output, "wb") as o:
             for chunk in iter(lambda: i.read(8192), b""):
                 o.write(dec.decrypt(chunk))
             final = dec.finalize()
             if final:
                 o.write(final)
 
-        os.remove(inp)
+        os.remove(input)
 
     def _verify_crc(self, path, expected):
         crc = 0
@@ -58,13 +56,10 @@ class FileFinalizer:
             for chunk in iter(lambda: f.read(65536), b""):
                 crc = zlib.crc32(chunk, crc)
         if (crc & 0xFFFFFFFF) != expected:
-            raise ValueError("CRC mismatch")
+            raise CrcIntegrityError(f"CRC mismatch. Expected: {expected}, Actual: {actual}")
 
     def _remove_fragments(self, file_dir, count):
         for i in range(1, count + 1):
             p = os.path.join(file_dir, f"{i}.part")
             if os.path.exists(p):
-                try:
-                    os.remove(p)
-                except:
-                    pass
+                os.remove(p)

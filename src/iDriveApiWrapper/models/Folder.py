@@ -62,18 +62,18 @@ class Folder(Item):
         self.set_password(new_password)
 
     def unlock(self) -> None:
-        make_request("POST", f"folder/password/{self.id}", headers=self._get_password_header(), data={"new_password": ""})
+        make_request("POST", f"folder/password/{self.id}", headers=self._get_password_header(), data={"new_password": None})
         self.set_password(None)
 
-    def upload(self):
-        pass
+    @staticmethod
+    def create_folder(parent: 'Folder', name: str) -> 'Folder':
+        data = make_request("POST", "folders", headers=parent._get_password_header(), data={"parent_id": parent.id, "name": name})
+        folder = Folder(data['id'])
+        folder._set_data(data)
+        return folder
 
-    @overrides
-    def download(self, callback=None) -> str:
-        from ..utils.common import get_zip_download_url, download_from_url
-
-        download_url = get_zip_download_url([self])
-        return download_from_url(download_url)
+    def create_subfolder(self, name: str) -> 'Folder':
+        return Folder.create_folder(self, name)
 
     @staticmethod
     def _parse_children(parent: Union['Folder', None], data: dict):

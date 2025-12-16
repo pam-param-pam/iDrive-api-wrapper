@@ -3,11 +3,12 @@ from ..utils.networker import make_request
 
 
 class Subtitle(Resource):
-    def __init__(self, file_id: str, id: str, language: str, url):
+    def __init__(self, file_id: str, id: str, language: str, url, is_forced: bool):
         super().__init__(id)
         self.file_id = file_id
         self.language = language
         self.url = url
+        self.is_forced = is_forced
 
     def delete(self) -> None:
         make_request("DELETE", f"files/{self.file_id}/subtitles/{self._id}", headers=self._get_password_header())

@@ -47,7 +47,7 @@ class User(NamedTuple):
     name: str
     root: str
     maxDiscordMessageSize: int
-
+    maxAttachmentsPerMessage: int
 
 class Perms(NamedTuple):
     admin: bool

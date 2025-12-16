@@ -1,6 +1,12 @@
 class IDriveException(Exception):
     """A base class for all I Drive exceptions."""
 
+class NetworkError(IDriveException):
+    """A base class for errors related to networking."""
+
+class ServerTimeoutError(NetworkError):
+    """Raised when a network request times out."""
+
 class HttpError(IDriveException):
     """
     Base class for all HTTP errors.
@@ -30,6 +36,8 @@ class HttpError(IDriveException):
         """Safely get a header value."""
         return self.headers.get(key, default)
 
+    def __str__(self):
+        return self.text
 
 class BadRequestError(HttpError):
     """Raised when 400"""
@@ -63,7 +71,6 @@ class RateLimitError(HttpError):
     """Raised when 429"""
 
     def __init__(self, response):
-        # Extract wait time ONLY from the Retry-After header
         header_wait = response.headers.get("Retry-After")
 
         if header_wait and header_wait.isdigit():
@@ -89,3 +96,18 @@ class ServiceUnavailableError(HttpError):
 
 class ForcedLogoutException(IDriveException):
     """Raised when your session is invalidated, and you're forced to re login"""
+
+class DiscordAPIError(HttpError):
+    """Raised when Discord API errors"""
+
+class DiscordAttachmentNotFoundError(DiscordAPIError):
+    """Raised when discord attachment not found"""
+
+class UploadNotAllowedError(IDriveException):
+    """Raised when uploading is not allowed"""
+
+class PathDoesntExistError(IDriveException):
+    """Raised when path does not exist"""
+
+class CrcIntegrityError(IDriveException):
+    """Raised when CRC mismatch"""

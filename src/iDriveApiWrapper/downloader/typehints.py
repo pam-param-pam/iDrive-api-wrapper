@@ -1,8 +1,4 @@
-from typing import Union, List
+from typing import Callable, Optional
 
-from ..models.File import File
-from ..models.Folder import Folder
+from .state import FileState
 
-Downloadable = Union[File, Folder]
-
-DownloadInput = Union[List[Downloadable], Downloadable]

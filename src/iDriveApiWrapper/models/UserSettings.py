@@ -1,7 +1,6 @@
 from typing import Literal
 
 from ..models.Enums import EncryptionMethod
-from ..utils.networker import make_request
 
 class SettingsBuilder:
     def __init__(self, settings: "Settings"):
@@ -53,14 +52,13 @@ class SettingsBuilder:
         return self
 
     def save(self) -> None:
-        # Here you'd call your API
-        pass
+        raise NotImplemented()
 
 class Settings:
     def __init__(self, locale: str, hideLockedFolders: bool, dateFormat, theme: str,
                  viewMode: str, sortingBy: str, sortByAsc: bool, subfoldersInShares: bool,
                  concurrentUploadRequests: int, encryptionMethod: int,
-                 keepCreationTimestamp: bool):
+                 keepCreationTimestamp: bool, popupPreview: bool):
         self.locale = locale
         self.hideLockedFolders = hideLockedFolders
         self.dateFormat = dateFormat
@@ -70,8 +68,9 @@ class Settings:
         self.sortByAsc = sortByAsc
         self.subfoldersInShares = subfoldersInShares
         self.concurrentUploadRequests = concurrentUploadRequests
-        self.encryptionMethod = encryptionMethod
+        self.encryptionMethod = EncryptionMethod(encryptionMethod)
         self.keepCreationTimestamp = keepCreationTimestamp
+        self.popupPreview = popupPreview
 
     def builder(self) -> SettingsBuilder:
         return SettingsBuilder(self)

@@ -225,11 +225,6 @@ class File(Item):
         self._encryption_iv = data['iv']
 
     @overrides
-    def download(self, folder_path="", callback=None) -> str:
-        from ..utils.common import download_from_url
-        return download_from_url(self.download_url + "?download=true", folder_path)
-
-    @overrides
     def _set_data(self, json_data: dict) -> None:
         json_data = super()._set_data(json_data)
         for key, value in json_data.items():

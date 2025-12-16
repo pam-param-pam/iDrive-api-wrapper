@@ -1,43 +1,23 @@
 import logging
 
 from .state import FileInfo
-from .typehints import DownloadInput
+from ..models.Item import Item
 from ..utils.networker import make_request
 
 logger = logging.getLogger("iDrive")
 
-
+# Cleaned v.1
 class MetadataFetcher:
-
-    def _make_required_password(self, data: DownloadInput) -> dict:
-        required_passwords = {}
-        for item in data:
-            lock_from_id = item.lock_from
-            if lock_from_id not in required_passwords:
-                required_passwords[lock_from_id] = item.get_password()
-        return required_passwords
-
-    def _make_file_password_lookup(self, data: DownloadInput) -> dict[str, str]:
-        lookup = {}
-        for item in data:
-            lookup[item.id] = item.get_password()
-        return lookup
-
-    def _inject_passwords(self, raw_files: dict, file_passwords: dict[str, str]):
+    def _inject_passwords(self, raw_files: dict, password: str):
         for f in raw_files:
-            f["password"] = file_passwords.get(f["id"])
+            f["password"] = password
         return raw_files
 
-    def _make_ids(self, data) -> list[str]:
-        return [item.id for item in data]
-
-    def fetch_files(self, data: DownloadInput) -> list[FileInfo]:
-        required_passwords = self._make_required_password(data)
-        ids = self._make_ids(data)
-        res_data = make_request("POST", "items/ultraDownload", data={"ids": ids, "required_passwords": required_passwords})
-
-        file_passwords = self._make_file_password_lookup(data)
-        res_data = self._inject_passwords(res_data, file_passwords)
-
+    def fetch_files(self, item: Item) -> list[FileInfo]:
+        res_data = make_request(
+            "POST",
+            f"items/ultraDownload/items/{item.id}",
+            headers=item._get_password_header(),
+        )
+        self._inject_passwords(res_data, item.get_password())
         return FileInfo.convert(res_data)
-
