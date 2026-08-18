@@ -6,7 +6,7 @@ from pathlib import Path
 from queue import Queue
 from typing import List
 
-from exceptions import CrcIntegrityError
+from ..exceptions import CrcIntegrityError
 from .Decryptor import Decryptor
 from .DownloadContext import DownloadContext
 from .models import FileDownloadStatus, FileRecord, FileInfo, FragmentInfo

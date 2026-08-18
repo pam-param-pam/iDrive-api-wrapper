@@ -81,6 +81,7 @@ def _raise_for_status(response):
     elif status == 403:
         raise BackendResourcePermissionError(response)
     elif status == 404:
+        print(f"404 returned for: {response.json()}, {response.url}")
         raise BackendResourceNotFoundError(response)
     elif status == 429:
         raise BackendRateLimitError(response)

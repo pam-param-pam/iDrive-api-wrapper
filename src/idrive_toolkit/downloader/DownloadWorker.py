@@ -165,9 +165,6 @@ class DownloadWorker:
         total = 0
         try:
             with self._client.stream("GET", url) as r:
-                if r.status_code == 429:
-                    raise DiscordRateLimitError(r)
-
                 r.raise_for_status()
 
                 with safe_open(part_path, "wb") as f:
@@ -185,7 +182,7 @@ class DownloadWorker:
             status = e.response.status_code
             if status == 429:
                 raise DiscordRateLimitError(e.response, cause=e) from e
-            if status in (403, 404) or status >= 500:
+            if status >= 500:
                 raise DiscordServerTimeout(response=e.response, cause=e) from e
             raise
 

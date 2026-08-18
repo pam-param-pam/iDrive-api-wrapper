@@ -178,15 +178,17 @@ class UltraDownloader:
         if self._shutdown:
             raise RuntimeError("Downloader has been shut down")
 
-        self._start_workers()
-
         files = self.metadata_fetcher.fetch_files(data, passwords)
         target_dir = Path(target_dir)
         folder_id = data.id if data.is_dir else None
         size_estimated = sum(file["size"] for file in files)
 
+        # Do all synchronous validation before starting background workers.  In
+        # particular, a low-space error must not leave the autoscaler and the
+        # downloader threads running behind the caller's exception handler.
         self.check_target_dir(target_dir, size_estimated)
         self.ctx.reserve_files([file["id"] for file in files], size_estimated)
+        self._start_workers()
 
         for raw_file in files:
             self._put_file_task(
